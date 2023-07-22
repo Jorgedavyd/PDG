@@ -4,36 +4,7 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
 import matplotlib.pyplot as plt
 import numpy as np 
-from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score
-
-##data preprocessing
-def dataframe_to_torch(dataframe, input_cols, output_cols):
-    # Make a copy of the original dataframe
-    dataframe1 = dataframe.copy(deep=True)
-    # Extract input & outupts as numpy arrays
-    inputs_array = dataframe1[input_cols].to_numpy()
-    targets_array = dataframe1[output_cols].to_numpy()
-    #Normalizing the dataset
-    inputs_norm = StandardScaler().fit_transform(inputs_array)
-    #Creating torch tensors
-    inputs = torch.from_numpy(inputs_norm.astype(np.float32()))
-    targets = torch.from_numpy(targets_array.astype(np.float32()))
-    return inputs, targets
-
-def scaler(dataframe, input_cols):
-    # Make a copy of the original dataframe
-    dataframe1 = dataframe.copy(deep=True)
-    # Extract input & outupts as numpy arrays
-    inputs_array = dataframe1[input_cols].to_numpy()
-    #Normalizing the dataset
-    preprocess = StandardScaler().fit(inputs_array)
-    return preprocess
-
-def transform(scaler, data):
-    out = scaler(data)
-    out = torch.from_numpy(out.astype(np.float32()))
-    return out
 
 ## GPU usage
 

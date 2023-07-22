@@ -4,6 +4,7 @@ import xgboost as xgb
 from torch.nn.functional import binary_cross_entropy 
 from sklearn.linear_model import LogisticRegression
 from torch.optim import Adam
+from sklearn.metrics import accuracy_score
 
 class Classification(nn.Module):
     def training_step(self, batch):
@@ -96,7 +97,7 @@ class RandomForest:
     def predict(self, X):
         dtest = xgb.DMatrix(X)
         predictions = self.model.predict(dtest)
-        return [1 if p >= 0.5 else 0 for p in predictions]
+        return np.mean(predictions)
 
     def evaluate(self, X, y):
         predictions = self.predict(X)
@@ -121,3 +122,4 @@ class MaximumEntropy:
         predictions = self.model.predict(X)
         accuracy = accuracy_score(y, predictions)
         return accuracy
+    
