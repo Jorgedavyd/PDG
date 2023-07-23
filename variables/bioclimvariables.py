@@ -1,8 +1,8 @@
 class BioclimaticVariables():
     bio1 = 'Annual Mean Temperature'
     bio2 = 'Mean Diurnal Range (Mean of monthly (max temp - min temp))'
-    bio3 = 'Isothermality (BIO2/BIO7) (×100)'
-    bio4 = 'Temperature Seasonality (standard deviation ×100)'
+    bio3 = 'Isothermality (BIO2/BIO7) (x100)'
+    bio4 = 'Temperature Seasonality (standard deviation x100)'
     bio5 = 'Max Temperature of Warmest Month'
     bio6 = 'Min Temperature of Coldest Month'
     bio7 = 'Temperature Annual Range (BIO5-BIO6)'

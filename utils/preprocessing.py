@@ -1,21 +1,16 @@
-
-import pytesseract
-import os
+import georasters as gr
 import pandas as pd
 import numpy as np
-import torch.nn as nn
-import torch
-from torch.utils.data import TensorDataset
-import os
-from torchvision.datasets.utils import download_url
 import zipfile
-import georasters as gr
-from sklearn.preprocessing import StandardScaler
+import torch
 import glob
-#Dependecies
+import os
 
-tesseract_path = "C:\\Program Files\\Tesseract-OCR\\tesseract.exe"
-pytesseract.pytesseract.tesseract_cmd = tesseract_path
+from torch.utils.data import TensorDataset
+from torchvision.datasets.utils import download_url
+from sklearn.preprocessing import StandardScaler
+
+from utils.pseudo_abscence import *
 
 #URLs
 class URLs():
@@ -75,20 +70,15 @@ def import_targets(path):
         presence = pd.read_csv(path)
     else:
         presence = pd.read_excel(path)
-    
-    #pseudo-absence script for generating pseudo-abscence data
+    #Including the expert-based pseudo-absence data
 
-    pseudo_abscence = ...
-
-    dataset = pd.concat([presence, pseudo_abscence], axis = 0)
-
-    return dataset
+    return presence
 
 #
-def match_variables(independent, variables):
+def match_variables(independent, dependent):
     #match variables
-    dataset = ...
     #pd.merge
+    dataset = pd.merge(independent, dependent, 'right', left_index=False, right_index=False)
     return dataset
 
 #Data preprocessing
@@ -137,6 +127,7 @@ def data_preprocess(url: str):
     path = create_path()
     data = import_targets(path)
     dataframe = match_variables(data, dataframe)
+    dataframe = absence_generator(dataframe)
     dataset_torch = dataframe_to_torch(dataframe, dataframe.columns.values[:-1], dataframe.columns.values[-1])
     x,y = dataframe_to_numpy(dataframe, dataframe.columns.values[:-1], dataframe.columns.values[-1])
     return [dataset_torch, (x,y)]

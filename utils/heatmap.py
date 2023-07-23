@@ -2,6 +2,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 from mpl_toolkits.basemap import Basemap
 
+#point creation
+
+def get_map(full_dataframe, model):
+    full_dataframe['Probability'] = full_dataframe[:19]
+
+
+
+
+
 # Generate random data for demonstration
 num_points = 100
 paraguay_lats = np.random.uniform(low=-27, high=-19, size=num_points)
