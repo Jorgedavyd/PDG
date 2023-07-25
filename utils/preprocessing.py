@@ -40,7 +40,7 @@ def tif_to_dataframe(tif_path):
         path = os.path.join(tif_path, file)
         variable = gr.from_file(path).to_pandas()
         if idx == 0:
-            dataframe = variable.loc[:, ['x', 'y']].rename(columns = {'x':'Latitude', 'y': 'Longitude'})
+            dataframe = variable.loc[:, ['x', 'y']].rename(columns = {'x':'Longitude', 'y': 'Latitude'})
         dataframe = pd.concat([dataframe,variable[True].rename(file.split('_')[2] + file.split('_')[-1][:-4])], axis = 1)
     dataframe.columns = [list(dataframe.columns.values[:3]) + list(dataframe.columns.values[13:]) + list(dataframe.columns.values[3:13])]
     return dataframe
