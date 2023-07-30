@@ -18,6 +18,15 @@ class URLs():
     url300s='https://biogeo.ucdavis.edu/data/worldclim/v2.1/base/wc2.1_5m_bio.zip'
     url150s='https://biogeo.ucdavis.edu/data/worldclim/v2.1/base/wc2.1_2.5m_bio.zip'
     url30s='https://biogeo.ucdavis.edu/data/worldclim/v2.1/base/wc2.1_30s_bio.zip'
+#Get presence
+
+def get_presence_dependent(independent, dependent):
+    
+    data = match_variables(independent,dependent)
+
+    presence = data.loc[data.iloc[:, -1] == 1, :]
+
+    return presence, data
 
 #Download
 
@@ -42,7 +51,6 @@ def tif_to_dataframe(tif_path):
         if idx == 0:
             dataframe = variable.loc[:, ['x', 'y']].rename(columns = {'x':'Longitude', 'y': 'Latitude'})
         dataframe = pd.concat([dataframe,variable[True].rename(file.split('_')[2] + file.split('_')[-1][:-4])], axis = 1)
-    dataframe.columns = [list(dataframe.columns.values[:3]) + list(dataframe.columns.values[13:]) + list(dataframe.columns.values[3:13])]
     return dataframe
 
 # Targets
@@ -121,13 +129,13 @@ def transform(scaler, data):
     out = torch.from_numpy(out.astype(np.float32()))
     return out
 
-def data_preprocess(url: str):
+def data_preprocess(url: str, presence, independent, down_boundary: int, up_boundary: int, bounding_box: boxes=None):
     folder = from_url_tif(url)
-    dataframe = tif_to_dataframe(folder)
+    independent = tif_to_dataframe(folder)
     path = create_path()
-    data = import_targets(path)
-    dataframe = match_variables(data, dataframe)
-    dataframe = absence_generator(dataframe)
+    dependent = import_targets(path)
+    presence, dependent = get_presence_dependent(independent, dependent) 
+    dataframe = absence_generator(presence, dependent, independent, down_boundary, up_boundary, bounding_box)
     dataset_torch = dataframe_to_torch(dataframe, dataframe.columns.values[:-1], dataframe.columns.values[-1])
     x,y = dataframe_to_numpy(dataframe, dataframe.columns.values[:-1], dataframe.columns.values[-1])
     return [dataset_torch, (x,y)]

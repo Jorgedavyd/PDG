@@ -123,3 +123,9 @@ class MaximumEntropy:
         accuracy = accuracy_score(y, predictions)
         return accuracy
     
+
+def train_phase():
+    ## Include the training phase.
+    ## 1.Maximun entropy
+    ## 2. Random Forest
+    ## 3. Neural Network
