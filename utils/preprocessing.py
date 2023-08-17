@@ -4,6 +4,7 @@ import numpy as np
 import zipfile
 import torch
 import glob
+import tqdm
 import os
 
 from torch.utils.data import TensorDataset
@@ -11,6 +12,65 @@ from torchvision.datasets.utils import download_url
 from sklearn.preprocessing import StandardScaler
 
 from utils.pseudo_abscence import *
+
+def haversine(lat1, lon1, lat2, lon2):
+    """
+    Calculate the great-circle distance between two points 
+    on the Earth's surface using the Haversine formula.
+    """
+    R = 6371.0  # Earth radius in kilometers
+
+    lat1_rad = np.radians(lat1)
+    lon1_rad = np.radians(lon1)
+    lat2_rad = np.radians(lat2)
+    lon2_rad = np.radians(lon2)
+
+    dlat = lat2_rad - lat1_rad
+    dlon = lon2_rad - lon1_rad
+
+    a = np.sin(dlat / 2.0) ** 2 + np.cos(lat1_rad) * np.cos(lat2_rad) * np.sin(dlon / 2.0) ** 2
+    c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
+
+    distance = R * c
+    return distance
+
+#Bounding boxes
+class boxes:
+    
+    North_America= {
+        'latitude': {'min': 10.0, 'max': 80.0},
+        'longitude': {'min': -180.0, 'max': -35.0}
+    }
+
+    Central_America= {
+        'latitude': {'min': 5.0, 'max': 35.0},
+        'longitude': {'min': -95.0, 'max': -70.0}
+    }
+
+    South_America = {
+        'latitude': {'min': -55.0, 'max': 12.0},
+        'longitude': {'min': -80.0, 'max': -35.0}
+    }
+
+    Europe = {
+        'latitude': {'min': 35.0, 'max': 72.0},
+        'longitude': {'min': -25.0, 'max': 65.0}
+    }
+
+    Asia = {
+        'latitude': {'min': -10.0, 'max': 75.0},
+        'longitude': {'min': 25.0, 'max': 180.0}
+    }
+
+    Africa = {
+        'latitude': {'min': -40.0, 'max': 37.0},
+        'longitude': {'min': -25.0, 'max': 52.0}
+    }
+
+    Oceania = {
+        'latitude': {'min': -55.0, 'max': 0.0},
+        'longitude': {'min': 85.0, 'max': 180.0}
+    }
 
 #URLs
 class URLs():
@@ -44,13 +104,23 @@ def from_url_tif(url: str):
 
 #transform to dataframe
 
-def tif_to_dataframe(tif_path):
+def tif_to_dataframe(tif_path, bounding_box = None):
     for idx, file in enumerate(os.listdir(tif_path)):
         path = os.path.join(tif_path, file)
         variable = gr.from_file(path).to_pandas()
         if idx == 0:
             dataframe = variable.loc[:, ['x', 'y']].rename(columns = {'x':'Longitude', 'y': 'Latitude'})
         dataframe = pd.concat([dataframe,variable[True].rename(file.split('_')[2] + file.split('_')[-1][:-4])], axis = 1)
+        ## Domain
+
+    if bounding_box is not None:
+        dataframe = dataframe[
+            (dataframe['Latitude'] >= bounding_box['latitude']['min']) &
+            (dataframe['Latitude'] <= bounding_box['latitude']['max']) &
+            (dataframe['Longitude'] >= bounding_box['longitude']['min']) &
+            (dataframe['Longitude'] <= bounding_box['longitude']['max'])
+        ].reset_index(drop = True)
+
     return dataframe
 
 # Targets
@@ -85,6 +155,14 @@ def import_targets(path):
 #
 def match_variables(independent, dependent):
     #match variables
+    for idx, isolated_vector in tqdm(enumerate(dependent.values), desc='Analyzing locations...', total=len(dependent)):
+    
+        independent['distance'] = independent.apply(lambda row: haversine(isolated_vector[1], isolated_vector[0], row['Latitude'], row['Longitude']), axis=1)
+        
+        nearest = independent[independent['distance'] == independent['distance'].min()]
+
+        dependent.iloc[idx,:] = (float(nearest['Longitude']), float(nearest['Latitude']), isolated_vector[2])
+
     #pd.merge
     dataset = pd.merge(independent, dependent, 'right', left_index=False, right_index=False)
     return dataset
@@ -131,13 +209,13 @@ def transform(scaler, data):
 
 def data_preprocess(url: str, presence, independent, down_boundary: int, up_boundary: int, bounding_box: boxes=None):
     folder = from_url_tif(url)
-    independent = tif_to_dataframe(folder)
+    independent = tif_to_dataframe(folder, bounding_box)
     path = create_path()
     dependent = import_targets(path)
     presence, dependent = get_presence_dependent(independent, dependent) 
-    dataframe = absence_generator(presence, dependent, independent, down_boundary, up_boundary, bounding_box)
+    dataframe = absence_generator(presence, dependent, independent, down_boundary, up_boundary)
     dataset_torch = dataframe_to_torch(dataframe, dataframe.columns.values[:-1], dataframe.columns.values[-1])
     x,y = dataframe_to_numpy(dataframe, dataframe.columns.values[:-1], dataframe.columns.values[-1])
-    return [dataset_torch, (x,y)]
+    return dataset_torch, (x,y)
     
 

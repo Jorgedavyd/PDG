@@ -2,58 +2,13 @@ import pandas as pd
 from geopy.distance import geodesic
 import random
 
-class boxes:
-    
-    North_America= {
-        'latitude': {'min': 10.0, 'max': 80.0},
-        'longitude': {'min': -180.0, 'max': -35.0}
-    }
 
-    Central_America= {
-        'latitude': {'min': 5.0, 'max': 35.0},
-        'longitude': {'min': -95.0, 'max': -70.0}
-    }
-
-    South_America = {
-        'latitude': {'min': -55.0, 'max': 12.0},
-        'longitude': {'min': -80.0, 'max': -35.0}
-    }
-
-    Europe = {
-        'latitude': {'min': 35.0, 'max': 72.0},
-        'longitude': {'min': -25.0, 'max': 65.0}
-    }
-
-    Asia = {
-        'latitude': {'min': -10.0, 'max': 75.0},
-        'longitude': {'min': 25.0, 'max': 180.0}
-    }
-
-    Africa = {
-        'latitude': {'min': -40.0, 'max': 37.0},
-        'longitude': {'min': -25.0, 'max': 52.0}
-    }
-
-    Oceania = {
-        'latitude': {'min': -55.0, 'max': 0.0},
-        'longitude': {'min': 85.0, 'max': 180.0}
-    }
 
 ### Function f
 
-def dataframe_distance(presence, dependent, independent, down_boundary: int, up_boundary: int, bounding_box: boxes=None):
+def dataframe_distance(presence, dependent, independent, down_boundary: int, up_boundary: int):
     #presence points
     presence_points = presence.loc[:, ['Latitude', 'Longitude']].values
-    
-    ## Domain
-
-    if bounding_box is not None:
-        independent = independent[
-            (independent['Latitude'] >= bounding_box['latitude']['min']) &
-            (independent['Latitude'] <= bounding_box['latitude']['max']) &
-            (independent['Longitude'] >= bounding_box['longitude']['min']) &
-            (independent['Longitude'] <= bounding_box['longitude']['max'])
-        ]
 
     ## Union of collection A and B
     
@@ -80,7 +35,7 @@ def variable_analysis(dependent, presence, filtered_dataframe):
     
     ##Variables analysis    (presence, independent)
 
-    analysis = presence.describe().loc[['min', 'max'], ].iloc[:, 2:-1].T.reset_index()
+    analysis = presence.describe().loc[['min', 'max'], ].loc[:, ['bio1', 'bio3', 'bio5', 'bio6', 'bio7', 'bio12']].T.reset_index()
 
     ##Combine
     for variable, min_value, max_value in analysis.values:
@@ -101,11 +56,11 @@ def random_picking(dependent, presence, filtered_dataframe):
 
     return dependent.reset_index(drop=True)
 
-def absence_generator(presence, dependent, independent, down_boundary: int, up_boundary: int, bounding_box: boxes=None):
+def absence_generator(presence, dependent, independent, down_boundary: int, up_boundary: int):
     
     ### h(g(f(x)))---->dataframe
 
-    dependent, presence, complement_df = dataframe_distance(presence, dependent, independent, down_boundary, up_boundary, bounding_box)
+    dependent, presence, complement_df = dataframe_distance(presence, dependent, independent, down_boundary, up_boundary)
 
     dependent, presence, filtered_dataframe = variable_analysis(dependent, presence, complement_df)
 
