@@ -4,12 +4,12 @@ import numpy as np
 import zipfile
 import torch
 import glob
-import tqdm
 import os
 
 from torch.utils.data import TensorDataset
 from torchvision.datasets.utils import download_url
 from sklearn.preprocessing import StandardScaler
+from tqdm import tqdm
 
 from utils.pseudo_abscence import *
 
@@ -127,21 +127,21 @@ def tif_to_dataframe(tif_path, bounding_box = None):
 
 def create_path():
     print('Select the dataset: \n')
-    file_list = glob.glob('data/*.{xlsx,csv}')
+    file_list = glob.glob(os.path.join('data/', "*.csv")) + glob.glob(os.path.join('data/', "*.xlsx"))
     while True:
-        for idx, file in file_list:
+        for idx, file in enumerate(file_list):
             print(f'{idx+1}. {file}\n')
         ans = input('(Input the index number)=============================>(q: quit): ')
         if ans.isnumeric():
             idx = int(ans) - 1
             file = file_list[idx]
+            break
         else:
             if ans=='q':
                 break
             else:
                 print('Try again')
-    path = os.path.join('data', file)
-    return path
+    return file
 
 def import_targets(path):
     if 'csv' in path.split('.'):
@@ -207,7 +207,7 @@ def transform(scaler, data):
     out = torch.from_numpy(out.astype(np.float32()))
     return out
 
-def data_preprocess(url: str, presence, independent, down_boundary: int, up_boundary: int, bounding_box: boxes=None):
+def data_preprocess(url: str, down_boundary: int, up_boundary: int, bounding_box: boxes=None):
     folder = from_url_tif(url)
     independent = tif_to_dataframe(folder, bounding_box)
     path = create_path()
