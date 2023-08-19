@@ -129,4 +129,4 @@ def train_phase():
     ## 1.Maximun entropy
     ## 2. Random Forest
     ## 3. Neural Network
-    ...
+    
