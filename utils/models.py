@@ -5,6 +5,10 @@ from torch.nn.functional import binary_cross_entropy
 from sklearn.linear_model import LogisticRegression
 from torch.optim import Adam
 from sklearn.metrics import accuracy_score
+from sklearn import metrics
+from sklearn.model_selection import train_test_split
+from torch.utils.data import random_split
+from torch.utils.data import DataLoader
 
 class Classification(nn.Module):
     def training_step(self, batch):
@@ -23,18 +27,24 @@ class Classification(nn.Module):
         out = self(inputs)                    # Generar predicciones
         loss = binary_cross_entropy(out, target_tensor)   # Calcular el costo
         acc = accuracy(out, targets) #Calcular la precisión
-        return {'val_loss': loss.detach(), 'val_acc': acc}
+        jac = jaccard(out, targets) #jaccard metric
+        arm_score = f1(out, targets) #f1_score
+        area = AUC(out, targets) # Area under the curve
+        return {'val_loss': loss.detach(), 'val_acc': acc, 'val_jac': jac, 'val_f1': arm_score, 'val_auc': area}
 
     def validation_epoch_end(self, outputs):
         batch_losses = [x['val_loss'] for x in outputs]
         epoch_loss = torch.stack(batch_losses).mean()   # Sacar el valor expectado de todo el conjunto de costos
         batch_acc = [x['val_acc'] for x in outputs]
         epoch_acc = torch.stack(batch_acc).mean()   # Sacar el valor expectado de todo el conjunto de precisión
-        return {'val_loss': epoch_loss.item(), 'val_acc': epoch_acc.item()}
+        batch_jaccard = [x['val_jac'] for x in outputs]
+        epoch_jaccard = torch.stack(batch_jaccard).mean()   # Sacar el valor expectado de todo el conjunto de precisión
+        batch_f1 = [x['val_f1'] for x in outputs]
+        epoch_f1 = torch.stack(batch_f1).mean()   # Sacar el valor expectado de todo el conjunto de precisión
+        batch_auc = [x['val_auc'] for x in outputs]
+        epoch_auc = torch.stack(batch_auc).mean()   # Sacar el valor expectado de todo el conjunto de precisión
+        return {'val_loss': epoch_loss.item(), 'val_acc': epoch_acc.item(), 'val_jac': epoch_jaccard.item(), 'val_f1': epoch_f1.item(), 'val_auc': epoch_auc.item()}
 
-    def epoch_end(self, epoch, result): # Seguimiento del entrenamiento
-        print("Epoch [{}], train_loss: {:.4f}, val_loss: {:.4f}, val_acc: {:.4f}".format(
-            epoch, result['train_loss'], result['val_loss'], result['val_acc']))
 ## Model module
 
 # Here we can change the model architecture.
@@ -45,7 +55,7 @@ def  SingularLayer(input_size, output):
     )
     return out
 
-class NeuralNetwork(Classification):
+class NeuralNetwork(Classification, ROCplots):
     def __init__(self, input_size = 19, *args):
         super(NeuralNetwork, self).__init__()
         
@@ -65,21 +75,10 @@ class NeuralNetwork(Classification):
         out = self.overall_structure(xb)
         out = self.output_layer(out)
         return out
-    
-    def train(self,epochs, lr, loader, opt_func = Adam):
-        opt = opt_func(self.parameters(), lr = lr)
-        for epoch in range(epochs):
-            for batch in loader:    
-                #get the loss
-                loss = self.training_step(batch)
-                #take gradients
-                loss.backward()
-                #do the gradient descent step
-                opt.step()
-                #clear the gradients
-                opt.zero_grad()
+    def predict(self, xb):
+        return self(xb)
 
-class RandomForest:
+class RandomForest(ROCplots):
     def __init__(self, n_estimators=100, random_state=None):
         self(RandomForest, self).__init__()
         self.n_estimators = n_estimators
@@ -99,13 +98,7 @@ class RandomForest:
         predictions = self.model.predict(dtest)
         return np.mean(predictions)
 
-    def evaluate(self, X, y):
-        predictions = self.predict(X)
-        accuracy = accuracy_score(y, predictions)
-        return accuracy
-    
-
-class MaximumEntropy:
+class MaximumEntropy(ROCplots):
     def __init__(self, C=1.0, random_state=None):
         super(MaximumEntropy, self).__init__()
         self.C = C
@@ -118,15 +111,78 @@ class MaximumEntropy:
     def predict(self, X):
         return self.model.predict(X)
 
-    def evaluate(self, X, y):
-        predictions = self.model.predict(X)
-        accuracy = accuracy_score(y, predictions)
-        return accuracy
+def test_phase(x_test,y_test, model):
+    predictions = model.predict(x_test)
     
+    #metrics and losses
+    Accuracy_Score = metrics.accuracy_score(y_test, predictions)
+    JaccardIndex = metrics.jaccard_score(y_test, predictions)
+    F1_Score = metrics.f1_score(y_test, predictions)
+    Log_Loss = metrics.log_loss(y_test, predictions)
+    fpr, tpr, _ = metrics.roc_curve(y_test, predictions)
+    auc_=metrics.auc(fpr, tpr)
+    results_dict = {'accuracy': Accuracy_Score,
+                 'jaccard': JaccardIndex,
+                 'f1': F1_Score,
+                 'loss': Log_Loss,
+                 'auc': auc_}
+    #ROC figure
+    return results_dict
 
-def train_phase():
-    ## Include the training phase.
-    ## 1.Maximun entropy
-    ## 2. Random Forest
-    ## 3. Neural Network
+###Define the generalized hyperparameters
+
+def train_phase(torch_data, batch_size, numpy_data, epochs, lr,
+                  weight_decay=0, grad_clip=False, opt_func=torch.optim.Adam):
+    results_list = []
+    # data preparation
+    ## Numpy based
+    x_train, y_train, x_test, y_test = train_test_split(*numpy_data, test_size=0.2, shuffle = True)
     
+    ## Pytorch based
+    ###Generating dataset
+    batch_size = batch_size
+    val_size = round(0.2*len(torch_data))
+    train_size = len(torch_data) - val_size
+    
+    train_ds, val_ds = random_split(torch_data, [train_size, val_size])
+
+    ### Generating dataloaders
+    device = get_default_device()
+    
+    train_loader = DataLoader(train_ds, batch_size, shuffle=True)
+    val_loader = DataLoader(val_ds, batch_size*2)
+    train_loader = DeviceDataLoader(train_loader, device)
+    val_loader = DeviceDataLoader(val_loader, device)
+
+    # train phase
+    ## 1.Maximun entropy
+    print(f'\nTraining Maximum Entropy algorithm ...')
+    me_model = MaximumEntropy().fit(x_train, y_train)
+    result_dict = test_phase(x_test, y_test, me_model)
+    results_list.append(result_dict)
+    print('\nDone!')
+    
+    ## 2. Random Forest
+    print(f'\nTraining Random Forest algorithm ...')
+    rf_model = RandomForest().fit(x_train, y_train)
+    result_dict = test_phase(x_test, y_test, rf_model)
+    results_list.append(result_dict)
+    print('\nDone!')
+    
+    ## 3. Neural Network
+    nn_model = to_device(NeuralNetwork(19, (3,4,5)), device) ##define through jupyter notebooks
+    history = fit(epochs, lr, nn_model, train_loader, val_loader, weight_decay, grad_clip, opt_func)
+    print('\nDone!')
+    
+    #Defining name_project
+
+    name = input('Name of this project: ')
+
+    #Save metrics
+    save_metrics(history, name, results_list)
+    nn_model.torch_roc(val_loader, name, device)
+    loss_plot(history, name)
+    rf_model.roc(x_test, y_test, name, 'random_forest')
+    me_model.roc(x_test, y_test, name, 'maximum_entropy')
+
+    return me_model, rf_model, nn_model

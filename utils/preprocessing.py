@@ -94,12 +94,15 @@ def from_url_tif(url: str):
     foldername = url.split('_')[1]
     extension = foldername + '.zip'
     folder = f'variables/{foldername}'
-    os.makedirs(folder, exist_ok=True)
-    download_url(url, folder, extension)
-    path = os.path.join(folder, extension)
-    with zipfile.ZipFile(path, 'r') as zip_ref:
-        zip_ref.extractall(folder)
-    os.remove(path)
+    try:
+        os.makedirs(folder)
+        download_url(url, folder, extension)
+        path = os.path.join(folder, extension)
+        with zipfile.ZipFile(path, 'r') as zip_ref:
+            zip_ref.extractall(folder)
+        os.remove(path)
+    except FileExistsError:
+        pass
     return folder
 
 #transform to dataframe
@@ -162,6 +165,8 @@ def match_variables(independent, dependent):
         nearest = independent[independent['distance'] == independent['distance'].min()]
 
         dependent.iloc[idx,:] = (float(nearest['Longitude']), float(nearest['Latitude']), isolated_vector[2])
+
+    independent = independent.drop('distance', axis = 1)
 
     #pd.merge
     dataset = pd.merge(independent, dependent, 'right', left_index=False, right_index=False)

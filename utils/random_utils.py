@@ -5,6 +5,9 @@ from sklearn.metrics import roc_curve, auc
 import matplotlib.pyplot as plt
 import numpy as np 
 from sklearn.metrics import accuracy_score
+from sklearn import metrics
+from tqdm import tqdm
+import os
 
 ## GPU usage
 
@@ -50,27 +53,28 @@ def plot_losses(history):
     plt.legend()
     plt.show()
 
-#AUC and ROC
-def plot_roc(targets, predictions):
-    fpr, tpr, thresholds = roc_curve(targets, predictions)
-    roc_auc = auc(fpr, tpr)
-    plt.figure()
-    plt.plot(fpr, tpr, color='darkorange', lw=2, label='ROC curve (AUC = %0.2f)' % roc_auc)
-    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.05])
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title('Receiver Operating Characteristic')
-    plt.legend(loc="lower right")
-    plt.show()
 
 #Accuracy metric
 def accuracy(outputs, targets):
     predictions = torch.round(outputs)
     accuracy_ = torch.from_numpy(np.asarray(accuracy_score(targets, predictions)).astype(np.float32()))
     return accuracy_
-
+#Jaccard metric
+def jaccard(outputs, targets):
+    predictions = torch.round(outputs)
+    jaccard_ = torch.from_numpy(np.asarray(metrics.jaccard_score(targets, predictions)).astype(np.float32()))
+    return jaccard_
+#f1 metric
+def f1(outputs, targets):
+    predictions = torch.round(outputs)
+    f1_ = torch.from_numpy(np.asarray(metrics.f1_score(targets,predictions)).astype(np.float32()))
+    return f1_
+#AUC 
+def AUC(outputs, targets):
+    predictions = torch.round(outputs)
+    fpr, tpr, _ = metrics.roc_curve(targets,predictions)
+    auc_ = torch.from_numpy(np.asarray(metrics.auc(fpr, tpr)).astype(np.float32()))
+    return auc_
 @torch.no_grad()
 
 #Validation process
@@ -88,7 +92,7 @@ def fit(epochs, lr, model, train_loader, val_loader,
     # Poner el método de minimización personalizado
     optimizer = opt_func(model.parameters(), lr, weight_decay=weight_decay)
 
-    for epoch in range(epochs):
+    for epoch in tqdm(range(epochs), total = epochs, desc = 'Training Neural Network ...'):
         # Training Phase
         model.train()  #Activa calcular los vectores gradiente
         train_losses = []
@@ -113,4 +117,95 @@ def fit(epochs, lr, model, train_loader, val_loader,
         result['train_loss'] = torch.stack(train_losses).mean().item() #Stackea todos los costos de las iteraciones sobre los batches y los guarda como la pérdida general de la época
         model.epoch_end(epoch, result) #imprimir en pantalla el seguimiento
         history.append(result) # añadir a la lista el diccionario de resultados
+    
     return history
+
+
+class ROCplots():
+    def torch_roc(self, test_loader, name:str, device=get_default_device()):
+        self.eval()
+        y_true = []
+        y_scores = []
+
+        with torch.no_grad():
+            for data, labels in test_loader:
+                data, labels = to_device(data, device), to_device(labels, device)
+                outputs = self(data)
+                y_true.extend(labels.cpu().numpy())
+                y_scores.extend(outputs.cpu().numpy())
+
+        fpr, tpr, _ = roc_curve(y_true, y_scores)
+        roc_auc = auc(fpr, tpr)
+
+        plt.figure()
+        plt.plot(fpr, tpr, color='darkorange', lw=2, label='ROC curve (area = %0.2f)' % roc_auc)
+        plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+        plt.xlim([0.0, 1.0])
+        plt.ylim([0.0, 1.05])
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.title('Receiver Operating Characteristic')
+        plt.legend(loc="lower right")
+
+        plt.savefig('metrics/'+{name}+'/nn_model_roc.png')
+        plt.close()
+    def roc(self, x, targets, name:str, model_name:str):
+        predictions = self.predict(x)
+        fpr, tpr, _ = roc_curve(targets, predictions)
+        roc_auc = auc(fpr, tpr)
+        plt.figure()
+        plt.plot(fpr, tpr, color='darkorange', lw=2, label='ROC curve (AUC = %0.2f)' % roc_auc)
+        plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+        plt.xlim([0.0, 1.0])
+        plt.ylim([0.0, 1.05])
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.title('Receiver Operating Characteristic')
+        plt.legend(loc="lower right")
+        plt.savefig('metrics/'+name+'/'+model_name+'_roc.png')
+        plt.close()
+
+
+def loss_plot(history, name:str):
+    losses_val = [x['val_loss'] for x in history]
+    losses_train = [x['train_loss'] for x in history]
+    _, ax = plt.subplots(figsize = (7,7), dpi = 100)
+    ax.plot(losses_val, marker = 'x', color = 'r', label = 'Cross-Validation' )
+    ax.plot(losses_train, marker = 'o', color = 'g', label = 'Training' )
+    ax.set(ylabel = 'Loss', xlabel = 'Epoch', title = 'Loss vs. No. of epochs')
+    plt.legend()
+    plt.savefig('metrics/'+name+'/nn_model_loss.png')
+    plt.close()
+
+
+def save_metrics(history, name:str, results_list):
+    os.makedirs('metrics/'+ name, exist_ok=True)
+    with open('metrics/'+name+'/neural_network.csv', 'w') as file:
+        file.write('Epoch,Training_loss,Validation_loss,jaccard,f1_score,accuracy,auc\n')
+        for epoch, data in tqdm(enumerate(history), desc = 'Saving Neural Network Metrics ...', total = len(history)):
+            training_loss = data['train_loss']
+            validation_loss = data['val_loss']
+            jaccard_metric = data['val_jac']
+            f1_score_ = data['val_f1']
+            accuracy_ = data['val_acc']
+            area_under_curve = data['val_auc']
+            file.write(f'{epoch+1},{training_loss},{validation_loss},{jaccard_metric},{f1_score_},{accuracy_},{area_under_curve}\n')
+        print('Done!')
+    with open('metrics/'+name+'/maximum_entropy.csv', 'w') as file:
+        print('Saving Maximum Entropy metrics ...')
+        loss_ = results_list[0]['loss']
+        jaccard_ = results_list[0]['jaccard']
+        f1_ = results_list[0]['f1']
+        acc_ = results_list[0]['accuracy']
+        auc_ = results_list[0]['auc']
+        file.write(f'loss,jaccard,f1_score,accuracy,auc\n{loss_},{jaccard_},{f1_},{acc_},{auc_}')
+        print('Done!')
+    with open('metrics/'+name+'/random_forest.csv', 'w') as file:
+        print('Saving Random Forest metrics ...')
+        loss_ = results_list[1]['loss']
+        jaccard_ = results_list[1]['jaccard']
+        f1_ = results_list[1]['f1']
+        acc_ = results_list[1]['accuracy']
+        auc_ = results_list[1]['auc']
+        file.write(f'loss,jaccard,f1_score,accuracy,auc\n{loss_},{jaccard_},{f1_},{acc_},{auc_}')
+        print('Done!')

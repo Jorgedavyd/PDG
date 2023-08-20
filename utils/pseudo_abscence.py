@@ -2,14 +2,15 @@ import pandas as pd
 from geopy.distance import geodesic
 import random
 from tqdm import tqdm
+import numpy as np
 
 
 
 ### Function f
 
-def dataframe_distance(presence, dependent, independent, down_boundary: int, up_boundary: int):
-    print('1. Generating pseudo-absence points:\n')
-    print('1.1. Min-Max radius analysis')
+def dataframe_distance(presence, independent, down_boundary: int, up_boundary: int):
+    print('\n\n1. Generating pseudo-absence points:\n')
+    print('1.1. Min-Max radius analysis\n')
     #presence points
     presence_points = presence.loc[:, ['Latitude', 'Longitude']].values
 
@@ -32,45 +33,55 @@ def dataframe_distance(presence, dependent, independent, down_boundary: int, up_
 
     print('Done!')
 
-    return dependent, presence, complement_df
+    return complement_df
 
 ### g function
 
 def variable_analysis(dependent, presence, filtered_dataframe):
-    print('1.2. Bioclim variable analysis ...')
+    print('1.2. Bioclim variable analysis ...\n')
+
     ##Variables analysis    (presence, independent)
 
-    analysis = presence.describe().loc[['min', 'max'], ].loc[:, ['bio1', 'bio3', 'bio5', 'bio6', 'bio7', 'bio12']].T.reset_index()
+    main_bio = ['bio1', 'bio3', 'bio5', 'bio6', 'bio7', 'bio12'] ##You can try changing these values, or use all variables
 
-    ##Combine
-    for variable, min_value, max_value in tqdm(analysis.values, desc = 'Filtering recurrent variable zones ...'):
-            filtered_dataframe = filtered_dataframe[(filtered_dataframe[variable]<min_value) & (filtered_dataframe[variable]>max_value)]
-    
+    analysis = presence.describe().loc[['mean'], ].loc[:, main_bio].T.reset_index()
+
+
+    filtered_dataframe['distance'] = 0
+
+    for variable, mean in tqdm(analysis.values, desc = 'Statistical analysis ...'):
+        filtered_dataframe[f'distance_{variable}'] = filtered_dataframe.apply(lambda row: float(np.linalg.norm(mean-row[variable])), axis = 1)
+        max_value = filtered_dataframe[f'distance_{variable}'].max()
+        filtered_dataframe['distance'] = filtered_dataframe.apply(lambda row: row['distance'] + row[f'distance_{variable}']/max_value , axis = 1)
+        filtered_dataframe = filtered_dataframe.drop(f'distance_{variable}', axis = 1)
+
+    filtered_dataframe['distance'] = filtered_dataframe.apply(lambda row: row['distance']/6, axis = 1)
+
+    filtered_dataframe = filtered_dataframe.sort_values('distance', ascending = False).head(2*len(presence) - len(dependent)).drop('distance', axis = 1)
+
     print('Done!')
     
-    return dependent, presence, filtered_dataframe.reset_index(drop=True)
+    return filtered_dataframe.reset_index(drop=True)
 
 ### h function
 
-def random_picking(dependent, presence, filtered_dataframe):
-    print('1.3. Picking random pseudo-absence points')
+def unified_dataframe(dependent, filtered_dataframe):
+    print('1.3. Picking random pseudo-absence points\n')
     filtered_dataframe['Presence'] = 0
 
-    for i in tqdm(range(len(presence))):
-        i = random.randint(0, len(filtered_dataframe))
-        element = pd.DataFrame(filtered_dataframe.reset_index(drop=True).iloc[i,:]).T
-        dependent = dependent.append(element)
+    dataframe = pd.concat([filtered_dataframe, dependent]).sample(frac = 1.0).reset_index(drop=True)
 
-    return dependent.reset_index(drop=True)
+    print('Done!')
+    return dataframe
 
 def absence_generator(presence, dependent, independent, down_boundary: int, up_boundary: int):
     
     ### h(g(f(x)))---->dataframe
 
-    dependent, presence, complement_df = dataframe_distance(presence, dependent, independent, down_boundary, up_boundary)
+    complement_df = dataframe_distance(presence, independent, down_boundary, up_boundary)
 
-    dependent, presence, filtered_dataframe = variable_analysis(dependent, presence, complement_df)
+    filtered_dataframe = variable_analysis(dependent, presence, complement_df)
 
-    dataframe = random_picking(dependent, presence, filtered_dataframe)
+    dataframe = unified_dataframe(dependent, filtered_dataframe)
 
     return dataframe
