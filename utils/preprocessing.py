@@ -4,6 +4,7 @@ import numpy as np
 import zipfile
 import torch
 import glob
+import math
 import os
 
 from torch.utils.data import TensorDataset
@@ -36,41 +37,42 @@ def haversine(lat1, lon1, lat2, lon2):
 
 #Bounding boxes
 class boxes:
-    
-    North_America= {
-        'latitude': {'min': 10.0, 'max': 80.0},
-        'longitude': {'min': -180.0, 'max': -35.0}
-    }
+    def __init__(self, independent, up_boundary: float):
+        self.data = independent
+        self.longitude = independent['Longitude']
+        self.latitude = independent['Latitude']
+        self.up_boundary = up_boundary
+    def transformation(self, lat, lon, distance):
 
-    Central_America= {
-        'latitude': {'min': 5.0, 'max': 35.0},
-        'longitude': {'min': -95.0, 'max': -70.0}
-    }
+        # Earth's radius in kilometers
+        earth_radius = 6371.0
 
-    South_America = {
-        'latitude': {'min': -55.0, 'max': 12.0},
-        'longitude': {'min': -80.0, 'max': -35.0}
-    }
+        delta_lat =  distance/ earth_radius
+        delta_lon = distance / (earth_radius * math.cos(math.radians(lat)))
 
-    Europe = {
-        'latitude': {'min': 35.0, 'max': 72.0},
-        'longitude': {'min': -25.0, 'max': 65.0}
-    }
+        # Calculate new coordinates
+        new_lat = lat + math.degrees(delta_lat)
+        new_lon = lon + math.degrees(delta_lon)
 
-    Asia = {
-        'latitude': {'min': -10.0, 'max': 75.0},
-        'longitude': {'min': 25.0, 'max': 180.0}
-    }
-
-    Africa = {
-        'latitude': {'min': -40.0, 'max': 37.0},
-        'longitude': {'min': -25.0, 'max': 52.0}
-    }
-
-    Oceania = {
-        'latitude': {'min': -55.0, 'max': 0.0},
-        'longitude': {'min': 85.0, 'max': 180.0}
-    }
+        return new_lon, new_lat
+    def restrict(self):
+        min_lat = self.latitude.min()
+        max_lat = self.latitude.max()
+        min_lon = self.longitude.min()
+        max_lon = self.longitude.max()
+        min_lon_bound, min_lat_bound = self.transformation(min_lat, min_lon, -self.up_boundary)
+        max_lon_bound, max_lat_bound = self.transformation(max_lat, max_lon, self.up_boundary)
+        bounding_box = {
+            'latitude': {'min': min_lat_bound, 'max': max_lat_bound},
+            'longitude': {'min': min_lon_bound, 'max': max_lon_bound}
+        }
+        self.data = self.data[
+            (self.data['Latitude'] >= bounding_box['latitude']['min']) &
+            (self.data['Latitude'] <= bounding_box['latitude']['max']) &
+            (self.data['Longitude'] >= bounding_box['longitude']['min']) &
+            (self.data['Longitude'] <= bounding_box['longitude']['max'])
+        ].reset_index(drop = True)
+        return self.data
 
 #URLs
 class URLs():
@@ -107,7 +109,7 @@ def from_url_tif(url: str):
 
 #transform to dataframe
 
-def tif_to_dataframe(tif_path, bounding_box = None):
+def tif_to_dataframe(tif_path, up_boundary: float):
     for idx, file in enumerate(os.listdir(tif_path)):
         path = os.path.join(tif_path, file)
         variable = gr.from_file(path).to_pandas()
@@ -115,16 +117,10 @@ def tif_to_dataframe(tif_path, bounding_box = None):
             dataframe = variable.loc[:, ['x', 'y']].rename(columns = {'x':'Longitude', 'y': 'Latitude'})
         dataframe = pd.concat([dataframe,variable[True].rename(file.split('_')[2] + file.split('_')[-1][:-4])], axis = 1)
         ## Domain
+        
+    bounding_box = boxes(dataframe, up_boundary)
 
-    if bounding_box is not None:
-        dataframe = dataframe[
-            (dataframe['Latitude'] >= bounding_box['latitude']['min']) &
-            (dataframe['Latitude'] <= bounding_box['latitude']['max']) &
-            (dataframe['Longitude'] >= bounding_box['longitude']['min']) &
-            (dataframe['Longitude'] <= bounding_box['longitude']['max'])
-        ].reset_index(drop = True)
-
-    return dataframe
+    return bounding_box.restrict()
 
 # Targets
 

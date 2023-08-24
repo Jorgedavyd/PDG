@@ -1,9 +1,11 @@
 import matplotlib.pyplot as plt
 import geopandas as gpd
+from scipy.interpolate import griddata
 import pandas as pd
 from random_utils import Project
 import os
 from torchvision.datasets.utils import download_url
+import numpy as np
 
 class Map(Project):
     def __init__(self, country: str, model_name: str, name: str):
@@ -14,6 +16,7 @@ class Map(Project):
         self.data = pd.read_csv('projects/'+self.name+f'/inference/{model_name}.csv')
         self.longitude = self.data['Longitude']
         self.latitude = self.data['Latitude']
+        self.probability = self.data['Probability']
         self.geometry = gpd.points_from_xy(self.longitude, self.latitude)
         self.geo_data = gpd.GeoDataFrame(self.data, geometry=self.geometry)
     
@@ -48,9 +51,23 @@ class Map(Project):
         return path
 
     def get_map(self, model_name: str):
+        ## Interpolation
+        min_lon, max_lon, min_lat, max_lat = self.country  ##cambiar
+        
+        grid_lon, grid_lat = np.meshgrid(np.linspace(min_lon, max_lon, 200), np.linspace(min_lat, max_lat, 200))
+        
+        grid_probabilities = griddata((self.longitude, self.latitude), self.probability, (grid_lon, grid_lat), method='linear')
+        
+        ##plot
         _, ax = plt.subplots(1, 1, figsize=(10, 10))
-        self.geo_data.plot(column='Specie Distribution', cmap='OrRd', markersize=10, ax=ax, legend=True)
-        ax.set_title('Species Probability Heatmap (Within Country Boundary)')
+        
+        heatmap = ax.imshow(grid_probabilities, extent=(min_lon, max_lon, min_lat, max_lat), origin='lower', cmap='OrRd')
+        
+        ax.set_title('Species Probability Heatmap')
+
+        plt.colorbar(heatmap, ax=ax, label='Probability')
+
         plt.savefig('projects/'+self.name+'/heatmap/'+model_name+'.png')
+
         plt.show()
 
