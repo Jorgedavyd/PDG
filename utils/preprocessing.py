@@ -116,8 +116,7 @@ def tif_to_dataframe(tif_path, up_boundary: float):
         if idx == 0:
             dataframe = variable.loc[:, ['x', 'y']].rename(columns = {'x':'Longitude', 'y': 'Latitude'})
         dataframe = pd.concat([dataframe,variable[True].rename(file.split('_')[2] + file.split('_')[-1][:-4])], axis = 1)
-        ## Domain
-        
+
     bounding_box = boxes(dataframe, up_boundary)
 
     return bounding_box.restrict()
@@ -208,9 +207,9 @@ def transform(scaler, data):
     out = torch.from_numpy(out.astype(np.float32()))
     return out
 
-def data_preprocess(url: str, down_boundary: int, up_boundary: int, bounding_box: boxes=None):
+def data_preprocess_with_pseudo(url: str, down_boundary: float, up_boundary: float):
     folder = from_url_tif(url)
-    independent = tif_to_dataframe(folder, bounding_box)
+    independent = tif_to_dataframe(folder, up_boundary)
     path = create_path()
     dependent = import_targets(path)
     presence, dependent = get_presence_dependent(independent, dependent) 
@@ -220,3 +219,12 @@ def data_preprocess(url: str, down_boundary: int, up_boundary: int, bounding_box
     return dataset_torch, (x,y)
     
 
+def data_preprocess_without_pseudo(url: str):
+    folder = from_url_tif(url)
+    independent = tif_to_dataframe(folder, 0)
+    path = create_path()
+    dependent = import_targets(path)
+    dependent = match_variables(independent, dependent)
+    dataframe_torch = dataframe_to_torch(dependent, dependent.columns.values[:-1], dependent.columns.values[-1])
+    x,y = dataframe_to_numpy(dependent, dependent.columns.values[:-1], dependent.columns.values[-1])
+    return dataframe_torch, (x,y)

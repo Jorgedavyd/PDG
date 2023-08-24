@@ -131,8 +131,8 @@ def test_phase(x_test,y_test, model):
 
 ###Define the generalized hyperparameters
 
-def train_phase(torch_data, batch_size, numpy_data, epochs, lr,
-                  weight_decay=0, grad_clip=False, opt_func=torch.optim.Adam):
+def train_phase(torch_data, batch_size:int, numpy_data, epochs:int, lr: float,
+                  weight_decay: float=0.0, grad_clip=False, opt_func=torch.optim.Adam):
     results_list = []
     # data preparation
     ## Numpy based
