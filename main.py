@@ -7,4 +7,13 @@ from utils.models import *
 
 
 if __name__ == '__main__':
-    
+    while True:
+        ##Main process
+
+        ##output program
+        while True:
+            ans = input('Do you want to create another distribution or quit:(q: quit, c:continue)').lower()
+            if ans is not 'c' or 'q':
+                continue
+            else: 
+                break

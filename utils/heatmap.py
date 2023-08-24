@@ -1,46 +1,56 @@
 import matplotlib.pyplot as plt
-import numpy as np
-from mpl_toolkits.basemap import Basemap
+import geopandas as gpd
+import pandas as pd
+from random_utils import Project
+import os
+from torchvision.datasets.utils import download_url
 
-#point creation
+class Map(Project):
+    def __init__(self, country: str, model_name: str, name: str):
+        super().__init__(name)
+        self.model_name = model_name
+        self.country = gpd.read_file(self.get_country(country))
+        # Read the longitude, latitude, probability csv
+        self.data = pd.read_csv('projects/'+self.name+f'/inference/{model_name}.csv')
+        self.longitude = self.data['Longitude']
+        self.latitude = self.data['Latitude']
+        self.geometry = gpd.points_from_xy(self.longitude, self.latitude)
+        self.geo_data = gpd.GeoDataFrame(self.data, geometry=self.geometry)
+    
+    def get_country(self, country: str):
+        try:
+            with open('utils/map_dependencies/countries.geojson', 'r') as attempt:
+                attempt.close()
+        except FileNotFoundError:
+            os.makedirs('utils/map_dependencies')
+            url='https://datahub.io/core/geo-countries/r/countries.geojson'
+            root = 'utils/map_dependencies'
+            filename = 'countries.geojson'
+            download_url(url, root, filename)
 
-def get_map(full_dataframe, model):
-    full_dataframe['Probability'] = full_dataframe[:19]
+        while True:
+            with open('utils/map_dependencies/countries.geojson', 'r') as file:
+                lines = file.readlines()
+                data = None
+                for line in lines:
+                    if country in line:
+                        data = line
+                        break
+                if data is None:
+                    print('Put again the country name')
+                    continue
+                else:
+                    break
+        path = f'utils/map_dependencies/{country}.geojson'
+        with open(path, 'w') as file:
+            file.write(data)
 
+        return path
 
-
-
-
-# Generate random data for demonstration
-num_points = 100
-paraguay_lats = np.random.uniform(low=-27, high=-19, size=num_points)
-paraguay_lons = np.random.uniform(low=-63, high=-54, size=num_points)
-values = np.random.uniform(low=0, high=1, size=num_points)
-
-# Create a Basemap instance
-m = Basemap(projection='cyl', resolution='l',
-            llcrnrlat=-27, urcrnrlat=-19,
-            llcrnrlon=-63, urcrnrlon=-54)
-
-# Create a figure and axes
-plt.figure(figsize=(8, 6))
-ax = plt.gca()
-
-# Draw coastlines and borders
-m.drawcoastlines()
-m.drawcountries()
-
-# Convert latitudes and longitudes to map coordinates
-x, y = m(paraguay_lons, paraguay_lats)
-
-# Plot the heat map using scatter plot
-sc = m.scatter(x, y, c=values, cmap='hot', edgecolors='k', linewidth=0.5)
-
-# Add a colorbar
-plt.colorbar(sc, label="Heat")
-
-# Set plot title
-plt.title("Paraguay Heat Map")
-
-plt.show()
+    def get_map(self, model_name: str):
+        _, ax = plt.subplots(1, 1, figsize=(10, 10))
+        self.geo_data.plot(column='Specie Distribution', cmap='OrRd', markersize=10, ax=ax, legend=True)
+        ax.set_title('Species Probability Heatmap (Within Country Boundary)')
+        plt.savefig('projects/'+self.name+'/heatmap/'+model_name+'.png')
+        plt.show()
 

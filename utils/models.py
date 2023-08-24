@@ -56,7 +56,7 @@ def  SingularLayer(input_size, output):
     return out
 
 class NeuralNetwork(Classification, ROCplots):
-    def __init__(self, input_size = 19, *args):
+    def __init__(self, input_size = 21, *args):
         super(NeuralNetwork, self).__init__()
         
         self.overall_structure = nn.Sequential()
@@ -174,15 +174,13 @@ def train_phase(torch_data, batch_size, numpy_data, epochs, lr,
     history = fit(epochs, lr, nn_model, train_loader, val_loader, weight_decay, grad_clip, opt_func)
     print('\nDone!')
     
-    #Defining name_project
-
-    name = input('Name of this project: ')
-
+    #Defining project
+    project = Project(input('Name of this project: '))
     #Save metrics
-    save_metrics(history, name, results_list)
-    nn_model.torch_roc(val_loader, name, device)
-    loss_plot(history, name)
-    rf_model.roc(x_test, y_test, name, 'random_forest')
-    me_model.roc(x_test, y_test, name, 'maximum_entropy')
+    project.save_metrics(history, results_list)
+    nn_model.torch_roc(val_loader, device)
+    project.loss_plot(history)
+    rf_model.roc(x_test, y_test, 'random_forest')
+    me_model.roc(x_test, y_test, 'maximum_entropy')
 
-    return me_model, rf_model, nn_model
+    return [me_model, rf_model, nn_model]
