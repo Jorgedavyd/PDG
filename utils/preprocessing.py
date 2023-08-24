@@ -216,7 +216,7 @@ def data_preprocess_with_pseudo(url: str, down_boundary: float, up_boundary: flo
     dataframe = absence_generator(presence, dependent, independent, down_boundary, up_boundary)
     dataset_torch = dataframe_to_torch(dataframe, dataframe.columns.values[:-1], dataframe.columns.values[-1])
     x,y = dataframe_to_numpy(dataframe, dataframe.columns.values[:-1], dataframe.columns.values[-1])
-    return dataset_torch, (x,y)
+    return independent, dataset_torch, (x,y)
     
 
 def data_preprocess_without_pseudo(url: str):
@@ -227,4 +227,4 @@ def data_preprocess_without_pseudo(url: str):
     dependent = match_variables(independent, dependent)
     dataframe_torch = dataframe_to_torch(dependent, dependent.columns.values[:-1], dependent.columns.values[-1])
     x,y = dataframe_to_numpy(dependent, dependent.columns.values[:-1], dependent.columns.values[-1])
-    return dataframe_torch, (x,y)
+    return independent, dataframe_torch, (x,y)

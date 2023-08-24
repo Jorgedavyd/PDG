@@ -8,8 +8,9 @@ from torchvision.datasets.utils import download_url
 import numpy as np
 
 class Map(Project):
-    def __init__(self, country: str, model_name: str, name: str):
+    def __init__(self, model_name: str, name: str):
         super().__init__(name)
+        global country
         self.model_name = model_name
         self.country = gpd.read_file(self.get_country(country))
         # Read the longitude, latitude, probability csv
@@ -20,7 +21,8 @@ class Map(Project):
         self.geometry = gpd.points_from_xy(self.longitude, self.latitude)
         self.geo_data = gpd.GeoDataFrame(self.data, geometry=self.geometry)
     
-    def get_country(self, country: str):
+    def get_country(self):
+        global country
         try:
             with open('utils/map_dependencies/countries.geojson', 'r') as attempt:
                 attempt.close()
@@ -40,7 +42,8 @@ class Map(Project):
                         data = line
                         break
                 if data is None:
-                    print('Put again the country name')
+                    print('Put again the country name\n')
+                    country = input('Put the country: ')
                     continue
                 else:
                     break
@@ -69,5 +72,4 @@ class Map(Project):
 
         plt.savefig('projects/'+self.name+'/heatmap/'+model_name+'.png')
 
-        plt.show()
 

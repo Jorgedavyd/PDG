@@ -11,8 +11,8 @@ for i in output:
     
 """
 class Model(Map):
-    def __init__(self, model, country: str, model_name: str, name: str):
-        super().__init__(country, model_name, name)
+    def __init__(self, model, model_name: str, name: str):
+        super().__init__(model_name, name)
         self.model = model
     def restrict_zone(self, independent):
         return gpd.sjoin(independent, self.country, how='inner', op='within')

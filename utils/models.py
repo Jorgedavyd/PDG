@@ -133,6 +133,7 @@ def test_phase(x_test,y_test, model):
 
 def train_phase(torch_data, batch_size:int, numpy_data, epochs:int, lr: float,
                   weight_decay: float=0.0, grad_clip=False, opt_func=torch.optim.Adam):
+    global name
     results_list = []
     # data preparation
     ## Numpy based
@@ -175,7 +176,8 @@ def train_phase(torch_data, batch_size:int, numpy_data, epochs:int, lr: float,
     print('\nDone!')
     
     #Defining project
-    project = Project(input('Name of this project: '))
+    name = input('Name of this project: ')
+    project = Project(name)
     #Save metrics
     project.save_metrics(history, results_list)
     nn_model.torch_roc(val_loader, device)
