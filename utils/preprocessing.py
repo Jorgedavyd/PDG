@@ -37,10 +37,10 @@ def haversine(lat1, lon1, lat2, lon2):
 
 #Bounding boxes
 class boxes:
-    def __init__(self, independent, up_boundary: float):
+    def __init__(self, independent, dependent, up_boundary: float):
         self.data = independent
-        self.longitude = independent['Longitude']
-        self.latitude = independent['Latitude']
+        self.longitude = dependent['Longitude']
+        self.latitude = dependent['Latitude']
         self.up_boundary = up_boundary
     def transformation(self, lat, lon, distance):
 
@@ -82,13 +82,11 @@ class URLs():
     url30s='https://biogeo.ucdavis.edu/data/worldclim/v2.1/base/wc2.1_30s_bio.zip'
 #Get presence
 
-def get_presence_dependent(independent, dependent):
+def get_presence_dependent(dependent):
     
-    data = match_variables(independent,dependent)
+    presence = dependent.loc[dependent.iloc[:, -1] == 1, :]
 
-    presence = data.loc[data.iloc[:, -1] == 1, :]
-
-    return presence, data
+    return presence
 
 #Download
 
@@ -109,7 +107,7 @@ def from_url_tif(url: str):
 
 #transform to dataframe
 
-def tif_to_dataframe(tif_path, up_boundary: float):
+def tif_to_dataframe(tif_path, up_boundary: float, dependent):
     for idx, file in enumerate(os.listdir(tif_path)):
         path = os.path.join(tif_path, file)
         variable = gr.from_file(path).to_pandas()
@@ -117,9 +115,11 @@ def tif_to_dataframe(tif_path, up_boundary: float):
             dataframe = variable.loc[:, ['x', 'y']].rename(columns = {'x':'Longitude', 'y': 'Latitude'})
         dataframe = pd.concat([dataframe,variable[True].rename(file.split('_')[2] + file.split('_')[-1][:-4])], axis = 1)
 
-    bounding_box = boxes(dataframe, up_boundary)
+    dependent = match_variables(dataframe, dependent)
+    
+    bounding_box = boxes(dataframe, dependent, up_boundary)
 
-    return bounding_box.restrict()
+    return dependent, bounding_box.restrict()
 
 # Targets
 
@@ -208,11 +208,11 @@ def transform(scaler, data):
     return out
 
 def data_preprocess_with_pseudo(url: str, down_boundary: float, up_boundary: float):
-    folder = from_url_tif(url)
-    independent = tif_to_dataframe(folder, up_boundary)
     path = create_path()
     dependent = import_targets(path)
-    presence, dependent = get_presence_dependent(independent, dependent) 
+    folder = from_url_tif(url)
+    dependent, independent = tif_to_dataframe(folder, up_boundary, dependent)
+    presence = get_presence_dependent(dependent)
     dataframe = absence_generator(presence, dependent, independent, down_boundary, up_boundary)
     dataset_torch = dataframe_to_torch(dataframe, dataframe.columns.values[:-1], dataframe.columns.values[-1])
     x,y = dataframe_to_numpy(dataframe, dataframe.columns.values[:-1], dataframe.columns.values[-1])
@@ -220,11 +220,10 @@ def data_preprocess_with_pseudo(url: str, down_boundary: float, up_boundary: flo
     
 
 def data_preprocess_without_pseudo(url: str):
-    folder = from_url_tif(url)
-    independent = tif_to_dataframe(folder, 0)
     path = create_path()
     dependent = import_targets(path)
-    dependent = match_variables(independent, dependent)
+    folder = from_url_tif(url)
+    dependent, independent = tif_to_dataframe(folder, 0, dependent)
     dataframe_torch = dataframe_to_torch(dependent, dependent.columns.values[:-1], dependent.columns.values[-1])
     x,y = dataframe_to_numpy(dependent, dependent.columns.values[:-1], dependent.columns.values[-1])
     return independent, dataframe_torch, (x,y)

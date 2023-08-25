@@ -1,5 +1,5 @@
 #classification module
-from random_utils import *
+from utils.random_utils import *
 import xgboost as xgb
 from torch.nn.functional import binary_cross_entropy 
 from sklearn.linear_model import LogisticRegression
@@ -56,8 +56,8 @@ def  SingularLayer(input_size, output):
     return out
 
 class NeuralNetwork(Classification, ROCplots):
-    def __init__(self, input_size = 21, *args):
-        super(NeuralNetwork, self).__init__()
+    def __init__(self, name, input_size = 21, *args):
+        super().__init__(name)
         
         self.overall_structure = nn.Sequential()
         #Model input and hidden layer
@@ -79,8 +79,8 @@ class NeuralNetwork(Classification, ROCplots):
         return self(xb)
 
 class RandomForest(ROCplots):
-    def __init__(self, n_estimators=100, random_state=None):
-        self(RandomForest, self).__init__()
+    def __init__(self,name:str, n_estimators=100, random_state=None):
+        self().__init__(name)
         self.n_estimators = n_estimators
         self.random_state = random_state
         self.model = None
@@ -99,8 +99,8 @@ class RandomForest(ROCplots):
         return np.mean(predictions)
 
 class MaximumEntropy(ROCplots):
-    def __init__(self, C=1.0, random_state=None):
-        super(MaximumEntropy, self).__init__()
+    def __init__(self, name:str, C=1.0, random_state=None):
+        super().__init__(name)
         self.C = C
         self.random_state = random_state
         self.model = LogisticRegression(C=C, random_state=random_state, solver='lbfgs', max_iter=1000)
@@ -112,7 +112,7 @@ class MaximumEntropy(ROCplots):
         return self.model.predict(X)
 
 def test_phase(x_test,y_test, model):
-    predictions = model.predict(x_test)
+    predictions = model(x_test)
     
     #metrics and losses
     Accuracy_Score = metrics.accuracy_score(y_test, predictions)
@@ -131,13 +131,13 @@ def test_phase(x_test,y_test, model):
 
 ###Define the generalized hyperparameters
 
-def train_phase(torch_data, batch_size:int, numpy_data, epochs:int, lr: float,
+def train_phase(torch_data, batch_size:int, x , y, epochs:int, lr: float,
                   weight_decay: float=0.0, grad_clip=False, opt_func=torch.optim.Adam):
     global name
     results_list = []
     # data preparation
     ## Numpy based
-    x_train, y_train, x_test, y_test = train_test_split(*numpy_data, test_size=0.2, shuffle = True)
+    x_train, x_test, y_train, y_test = train_test_split(x , y, test_size=0.2, shuffle = True)
     
     ## Pytorch based
     ###Generating dataset
@@ -156,27 +156,27 @@ def train_phase(torch_data, batch_size:int, numpy_data, epochs:int, lr: float,
     val_loader = DeviceDataLoader(val_loader, device)
 
     # train phase
+    name = input('Name of this project: ')
     ## 1.Maximun entropy
     print(f'\nTraining Maximum Entropy algorithm ...')
-    me_model = MaximumEntropy().fit(x_train, y_train)
+    me_model = MaximumEntropy(name).fit(x_train, y_train)
     result_dict = test_phase(x_test, y_test, me_model)
     results_list.append(result_dict)
     print('\nDone!')
     
     ## 2. Random Forest
     print(f'\nTraining Random Forest algorithm ...')
-    rf_model = RandomForest().fit(x_train, y_train)
+    rf_model = RandomForest(name).fit(x_train, y_train)
     result_dict = test_phase(x_test, y_test, rf_model)
     results_list.append(result_dict)
     print('\nDone!')
     
     ## 3. Neural Network
-    nn_model = to_device(NeuralNetwork(19, (3,4,5)), device) ##define through jupyter notebooks
+    nn_model = to_device(NeuralNetwork(name, 19, (3,4,5)), device) ##define through jupyter notebooks
     history = fit(epochs, lr, nn_model, train_loader, val_loader, weight_decay, grad_clip, opt_func)
     print('\nDone!')
     
     #Defining project
-    name = input('Name of this project: ')
     project = Project(name)
     #Save metrics
     project.save_metrics(history, results_list)

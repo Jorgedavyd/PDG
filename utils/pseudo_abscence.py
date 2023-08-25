@@ -1,6 +1,5 @@
 import pandas as pd
 from geopy.distance import geodesic
-import random
 from tqdm import tqdm
 import numpy as np
 

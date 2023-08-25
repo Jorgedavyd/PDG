@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import geopandas as gpd
 from scipy.interpolate import griddata
 import pandas as pd
-from random_utils import Project
+from utils.random_utils import Project
 import os
 from torchvision.datasets.utils import download_url
 import numpy as np

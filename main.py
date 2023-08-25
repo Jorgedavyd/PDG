@@ -7,7 +7,7 @@ from utils.inference import *
 
 def program_init():
     while True:
-        ans = input('Do you want to create you model with pseudo-absence data or you already have absence points?:\n(Y/n)').lower()
+        ans = input('Do you want to create you model with program generated pseudo-absence data?(if you dont make sure you have absence data points on your dataset):\n(Y/n):').lower()
         if ans == 'y':
             ans = 1
             break
@@ -30,14 +30,14 @@ if __name__ == '__main__':
     if program_init():
         down_boundary = float(input('Min radius:'))
         up_boundary = float(input('Max radius:'))
-        independent, torch_dataset, numpy_data = data_preprocess_with_pseudo(url, down_boundary, up_boundary)
+        independent, torch_dataset, (x,y) = data_preprocess_with_pseudo(url, down_boundary, up_boundary)
     else:
-        independent, torch_dataset, numpy_data = data_preprocess_without_pseudo(url)
+        independent, torch_dataset, (x,y) = data_preprocess_without_pseudo(url)
     
     # Training phase
 
     ## Neural network parameters
-    batch_size = 16
+    batch_size = 1
     epochs = 250
     lr = 1e-4
     weight_decay = 1e-5
@@ -45,7 +45,7 @@ if __name__ == '__main__':
     opt_func = torch.optim.Adam
     
     ## training...
-    models = train_phase(torch_dataset, batch_size, numpy_data, epochs, lr, weight_decay, grad_clip, opt_func)
+    models = train_phase(torch_dataset, batch_size, x,y, epochs, lr, weight_decay, grad_clip, opt_func)
 
     
     # Model inference
@@ -65,6 +65,10 @@ if __name__ == '__main__':
     LR_model.get_map(LR_model_name)
     RF_model.get_map(RF_model_name)
     NN_model.get_map(NN_model_name)
+
+    LR_model.save_joblib()
+    RF_model.save_joblib()
+    NN_model.save_torch()
 
     print('All the files are stored inside projects file with the respective project name')
 

@@ -1,6 +1,6 @@
 ## Create csv with all models
-from heatmap import Map
-from preprocessing import *
+from utils.heatmap import Map
+from utils.preprocessing import *
 import joblib
 import geopandas as gpd
 """
