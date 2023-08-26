@@ -107,19 +107,21 @@ def from_url_tif(url: str):
 
 #transform to dataframe
 
-def tif_to_dataframe(tif_path, up_boundary: float, dependent):
+def tif_to_dataframe(tif_path, up_boundary: float, dependent = None, inference: bool = False):
     for idx, file in enumerate(os.listdir(tif_path)):
         path = os.path.join(tif_path, file)
         variable = gr.from_file(path).to_pandas()
         if idx == 0:
             dataframe = variable.loc[:, ['x', 'y']].rename(columns = {'x':'Longitude', 'y': 'Latitude'})
         dataframe = pd.concat([dataframe,variable[True].rename(file.split('_')[2] + file.split('_')[-1][:-4])], axis = 1)
+    if inference:
+        return dataframe
+    else:
+        bounding_box = boxes(dataframe, dependent, up_boundary)
+        
+        dependent = match_variables(bounding_box.restrict(), dependent)
 
-    bounding_box = boxes(dataframe, dependent, up_boundary)
-    
-    dependent = match_variables(bounding_box.restrict(), dependent)
-
-    return dependent, bounding_box.restrict()
+        return dependent, bounding_box.restrict()
 
 # Targets
 
@@ -216,14 +218,14 @@ def data_preprocess_with_pseudo(url: str, down_boundary: float, up_boundary: flo
     dataframe = absence_generator(presence, dependent, independent, down_boundary, up_boundary)
     dataset_torch = dataframe_to_torch(dataframe, dataframe.columns.values[:-1], dataframe.columns.values[-1])
     x,y = dataframe_to_numpy(dataframe, dataframe.columns.values[:-1], dataframe.columns.values[-1])
-    return independent, dataset_torch, (x,y)
+    return dataset_torch, (x,y)
     
 
 def data_preprocess_without_pseudo(url: str):
     path = create_path()
     dependent = import_targets(path)
     folder = from_url_tif(url)
-    dependent, independent = tif_to_dataframe(folder, 0, dependent)
+    dependent, _ = tif_to_dataframe(folder, 0, dependent)
     dataframe_torch = dataframe_to_torch(dependent, dependent.columns.values[:-1], dependent.columns.values[-1])
     x,y = dataframe_to_numpy(dependent, dependent.columns.values[:-1], dependent.columns.values[-1])
-    return independent, dataframe_torch, (x,y)
+    return dataframe_torch, (x,y)

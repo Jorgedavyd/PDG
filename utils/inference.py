@@ -13,29 +13,31 @@ for i in output:
 class Model(Map):
     def __init__(self,country:str, model, model_name: str, name: str, independent):
         super().__init__(country, model_name, name)
+        self.model = model
         if model_name == 'Neural_Network':
             self.torch_inference(independent)
         else:
             self.general_inference(independent)
-        self.model = model
-    def restrict_zone(self, independent):
-        longitude = independent['Longitude']
-        latitude = independent['Latitude']
-        geometry = gpd.points_from_xy(longitude, latitude)
-        geo_data = gpd.GeoDataFrame(independent, geometry=geometry)        
-        return gpd.sjoin(geo_data, self.country, how='inner', op='within')
+    def restrict_zone(self, df):
+        geo_df = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df['Longitude'], df['Latitude']))
+        geo_df.crs = 'EPSG:4326'
+        data = gpd.sjoin(geo_df, self.country, how='inner', op='within')
+        data = data.drop(['geometry', 'index_right','ADMIN','ISO_A3'], axis = 1)
+        print(data.shape)
+        return data
+    
     def torch_inference(self, independent):
         data = self.restrict_zone(independent)
-
         predictions = []
 
         for _, row in data.iterrows():
-            input_data = torch.tensor(row.values, dtype=torch.float32)
+            input_data = torch.from_numpy(row.values.astype(np.float32))
             input_data = input_data.unsqueeze(0)  # Add a batch dimension
             prediction = self.model(input_data)
             predictions.append(prediction.item())
 
         data['Probability'] = predictions
+
 
         os.makedirs('projects/'+self.name+'/inference', exist_ok=True)
 
@@ -45,15 +47,15 @@ class Model(Map):
         predictions = []
 
         for _, row in data.iterrows():
-            input_data = row.values
-            prediction = self.model(input_data)
+            input_data = row.values.astype(np.float32).reshape(1,-1)
+            prediction = self.model.predict(input_data)
             predictions.append(prediction.item())
 
         data['Probability'] = predictions
         
         os.makedirs('projects/'+self.name+'/inference', exist_ok=True)
 
-        data.loc[:, ['Longitude', 'Latitude', 'Probability']].to_csv('projects/'+self.name+'/inference/'+self.model_name+'.csv')
+        data.loc[:, ['Longitude', 'Latitude', 'Probability']].to_csv('projects/'+self.name+'/inference/'+self.model_name+'.csv', index = False)
     def save_torch(self):
         os.makedirs('projects/'+self.name+'/models', exist_ok=True)
         torch.save(self.model.state_dict(), 'projects/'+self.name+'/models/'+self.model_name+'.pth')

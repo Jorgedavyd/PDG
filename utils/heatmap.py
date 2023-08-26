@@ -6,6 +6,9 @@ from utils.random_utils import Project
 import os
 from torchvision.datasets.utils import download_url
 import numpy as np
+import folium
+from folium.plugins import HeatMap
+from shapely.geometry import Point
 
 class Map(Project):
     def __init__(self, country: str, model_name: str, name: str):
@@ -42,33 +45,29 @@ class Map(Project):
                     break
         path = f'utils/map_dependencies/{self.country_name}.geojson'
         with open(path, 'w') as file:
-            file.write(data)
+            file.write(data[:-1])
 
         return path
 
     def get_map(self):
         self.data = pd.read_csv('projects/'+self.name+f'/inference/{self.model_name}.csv')
-        self.longitude = self.data['Longitude']
-        self.latitude = self.data['Latitude']
-        self.probability = self.data['Probability']
-        self.geometry = gpd.points_from_xy(self.longitude, self.latitude)
-        self.geo_data = gpd.GeoDataFrame(self.data, geometry=self.geometry)
-        ## Interpolation
-        min_lon, max_lon, min_lat, max_lat = self.country  ##cambiar
-        
-        grid_lon, grid_lat = np.meshgrid(np.linspace(min_lon, max_lon, 200), np.linspace(min_lat, max_lat, 200))
-        
-        grid_probabilities = griddata((self.longitude, self.latitude), self.probability, (grid_lon, grid_lat), method='linear')
-        
-        ##plot
-        _, ax = plt.subplots(1, 1, figsize=(10, 10))
-        
-        heatmap = ax.imshow(grid_probabilities, extent=(min_lon, max_lon, min_lat, max_lat), origin='lower', cmap='OrRd')
-        
-        ax.set_title('Species Probability Heatmap')
 
-        plt.colorbar(heatmap, ax=ax, label='Probability')
+        latitudes=list(self.data['Latitude'])
+        longitudes=list(self.data['Longitude'])
 
-        plt.savefig('projects/'+self.name+'/heatmap/'+self.model_name+'.png')
+        geometry = [Point(xy) for xy in zip(longitudes, latitudes)]
+        geo_df = gpd.GeoDataFrame(self.data, geometry=geometry)
 
+        # Create a base map centered around the mean of latitude and longitude
+        m = folium.Map(location=[geo_df['Latitude'].mean(), geo_df['Longitude'].mean()], zoom_start=10)
+
+        # Convert GeoDataFrame to a list of (latitude, longitude, weight) for HeatMap
+        heat_data = [(row['Latitude'], row['Longitude'], row['Probability']) for index, row in geo_df.iterrows()]
+
+        # Create a HeatMap layer
+        HeatMap(heat_data, radius=15).add_to(m)
+
+        # Display the map
+        os.makedirs('projects/'+self.name+'/heatmap/', exist_ok=True)
+        m.save('projects/'+self.name+'/heatmap/'+self.model_name+'_heatmap.html')  # Save the map as an HTML file
 

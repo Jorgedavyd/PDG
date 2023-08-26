@@ -30,9 +30,9 @@ if __name__ == '__main__':
     if program_init():
         down_boundary = float(input('Min radius:'))
         up_boundary = float(input('Max radius:'))
-        independent, torch_dataset, (x,y) = data_preprocess_with_pseudo(url, down_boundary, up_boundary)
+        torch_dataset, (x,y) = data_preprocess_with_pseudo(url, down_boundary, up_boundary)
     else:
-        independent, torch_dataset, (x,y) = data_preprocess_without_pseudo(url)
+        torch_dataset, (x,y) = data_preprocess_without_pseudo(url)
     
     # Training phase
 
@@ -49,6 +49,9 @@ if __name__ == '__main__':
 
     
     # Model inference
+    folder = from_url_tif(url)
+
+    independent = tif_to_dataframe(folder, up_boundary, inference = True)
     
     LR_model_name = 'Maximum_entropy'
     RF_model_name = 'Random_forest'
