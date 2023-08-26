@@ -39,13 +39,13 @@ if __name__ == '__main__':
     ## Neural network parameters
     batch_size = 1
     epochs = 250
-    lr = 1e-4
-    weight_decay = 1e-5
-    grad_clip = None
+    lr = 1e-3
+    weight_decay = 1e-4
+    grad_clip = 1e-2
     opt_func = torch.optim.Adam
     
     ## training...
-    models = train_phase(torch_dataset, batch_size, x,y, epochs, lr, weight_decay, grad_clip, opt_func)
+    name, models = train_phase(torch_dataset, batch_size, x,y, epochs, lr, weight_decay, grad_clip, opt_func)
 
     
     # Model inference
@@ -54,27 +54,16 @@ if __name__ == '__main__':
     RF_model_name = 'Random_forest'
     NN_model_name = 'Neural_Network'
     
-    LR_model = Model(models[0],LR_model_name, name)
-    RF_model = Model(models[1],RF_model_name, name)
-    NN_model = Model(models[2],NN_model_name, name)
+    LR_model = Model(country, models[0],LR_model_name, name, independent)
+    RF_model = Model(country, models[1],RF_model_name, name, independent)
+    NN_model = Model(country, models[2],NN_model_name, name, independent)
 
-    LR_model.general_inference(independent)
-    RF_model.general_inference(independent)
-    NN_model.torch_inference(independent)
-    
-    LR_model.get_map(LR_model_name)
-    RF_model.get_map(RF_model_name)
-    NN_model.get_map(NN_model_name)
+    LR_model.get_map()
+    RF_model.get_map()
+    NN_model.get_map()
 
     LR_model.save_joblib()
     RF_model.save_joblib()
     NN_model.save_torch()
 
     print('All the files are stored inside projects file with the respective project name')
-
-
-
-
-
-    
-    

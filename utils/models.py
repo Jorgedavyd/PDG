@@ -44,7 +44,9 @@ class Classification(nn.Module):
         batch_auc = [x['val_auc'] for x in outputs]
         epoch_auc = torch.stack(batch_auc).mean()   # Sacar el valor expectado de todo el conjunto de precisión
         return {'val_loss': epoch_loss.item(), 'val_acc': epoch_acc.item(), 'val_jac': epoch_jaccard.item(), 'val_f1': epoch_f1.item(), 'val_auc': epoch_auc.item()}
-
+    def epoch_end(self, epoch, result): # Seguimiento del entrenamiento
+        print("Epoch [{}], train_loss: {:.4f}, val_loss: {:.4f}, val_acc: {:.4f},jaccard: {:.4f}, f1_score: {:.4f}, AUC: {:.4f}".format(
+            epoch, result['train_loss'], result['val_loss'], result['val_acc'], result['val_jac'],result['val_f1'], result['val_auc']))
 ## Model module
 
 # Here we can change the model architecture.
@@ -57,8 +59,8 @@ def  SingularLayer(input_size, output):
 
 class NeuralNetwork(Classification, ROCplots):
     def __init__(self, name, input_size = 21, *args):
-        super().__init__(name)
-        
+        super(NeuralNetwork, self).__init__()
+        super(ROCplots, self).__init__(name)
         self.overall_structure = nn.Sequential()
         #Model input and hidden layer
         for num, output in enumerate(args):
@@ -79,8 +81,8 @@ class NeuralNetwork(Classification, ROCplots):
         return self(xb)
 
 class RandomForest(ROCplots):
-    def __init__(self,name:str, n_estimators=100, random_state=None):
-        self().__init__(name)
+    def __init__(self,name:str, n_estimators=100, random_state=43):
+        super().__init__(name)
         self.n_estimators = n_estimators
         self.random_state = random_state
         self.model = None
@@ -96,10 +98,10 @@ class RandomForest(ROCplots):
     def predict(self, X):
         dtest = xgb.DMatrix(X)
         predictions = self.model.predict(dtest)
-        return np.mean(predictions)
+        return predictions
 
 class MaximumEntropy(ROCplots):
-    def __init__(self, name:str, C=1.0, random_state=None):
+    def __init__(self, name:str, C=1.0, random_state=42):
         super().__init__(name)
         self.C = C
         self.random_state = random_state
@@ -112,8 +114,8 @@ class MaximumEntropy(ROCplots):
         return self.model.predict(X)
 
 def test_phase(x_test,y_test, model):
-    predictions = model(x_test)
-    
+    predictions = model.predict(x_test)
+    predictions = np.round(predictions)
     #metrics and losses
     Accuracy_Score = metrics.accuracy_score(y_test, predictions)
     JaccardIndex = metrics.jaccard_score(y_test, predictions)
@@ -133,12 +135,10 @@ def test_phase(x_test,y_test, model):
 
 def train_phase(torch_data, batch_size:int, x , y, epochs:int, lr: float,
                   weight_decay: float=0.0, grad_clip=False, opt_func=torch.optim.Adam):
-    global name
     results_list = []
     # data preparation
     ## Numpy based
-    x_train, x_test, y_train, y_test = train_test_split(x , y, test_size=0.2, shuffle = True)
-    
+    x_train, x_test, y_train, y_test = train_test_split(x , y, test_size=0.2, shuffle = True, stratify=y)
     ## Pytorch based
     ###Generating dataset
     batch_size = batch_size
@@ -159,20 +159,23 @@ def train_phase(torch_data, batch_size:int, x , y, epochs:int, lr: float,
     name = input('Name of this project: ')
     ## 1.Maximun entropy
     print(f'\nTraining Maximum Entropy algorithm ...')
-    me_model = MaximumEntropy(name).fit(x_train, y_train)
+    me_model = MaximumEntropy(name)
+    me_model.fit(x_train, y_train)
     result_dict = test_phase(x_test, y_test, me_model)
     results_list.append(result_dict)
     print('\nDone!')
     
     ## 2. Random Forest
     print(f'\nTraining Random Forest algorithm ...')
-    rf_model = RandomForest(name).fit(x_train, y_train)
+    rf_model = RandomForest(name)
+    rf_model.fit(x_train, y_train)
     result_dict = test_phase(x_test, y_test, rf_model)
     results_list.append(result_dict)
     print('\nDone!')
     
     ## 3. Neural Network
-    nn_model = to_device(NeuralNetwork(name, 19, (3,4,5)), device) ##define through jupyter notebooks
+    architecture = (3,4,5)
+    nn_model = to_device(NeuralNetwork(name, 21, *architecture), device) ##define through jupyter notebooks
     history = fit(epochs, lr, nn_model, train_loader, val_loader, weight_decay, grad_clip, opt_func)
     print('\nDone!')
     
@@ -185,4 +188,4 @@ def train_phase(torch_data, batch_size:int, x , y, epochs:int, lr: float,
     rf_model.roc(x_test, y_test, 'random_forest')
     me_model.roc(x_test, y_test, 'maximum_entropy')
 
-    return [me_model, rf_model, nn_model]
+    return name, [me_model, rf_model, nn_model]

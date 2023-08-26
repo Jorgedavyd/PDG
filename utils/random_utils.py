@@ -102,7 +102,6 @@ def fit(epochs, lr, model, train_loader, val_loader,
         # Fase de validación
         result = evaluate(model, val_loader)
         result['train_loss'] = torch.stack(train_losses).mean().item() #Stackea todos los costos de las iteraciones sobre los batches y los guarda como la pérdida general de la época
-        model.epoch_end(epoch, result) #imprimir en pantalla el seguimiento
         history.append(result) # añadir a la lista el diccionario de resultados
     
     return history

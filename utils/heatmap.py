@@ -8,21 +8,14 @@ from torchvision.datasets.utils import download_url
 import numpy as np
 
 class Map(Project):
-    def __init__(self, model_name: str, name: str):
+    def __init__(self, country: str, model_name: str, name: str):
         super().__init__(name)
-        global country
         self.model_name = model_name
-        self.country = gpd.read_file(self.get_country(country))
+        self.country_name = country
+        self.country = gpd.read_file(self.get_country())
         # Read the longitude, latitude, probability csv
-        self.data = pd.read_csv('projects/'+self.name+f'/inference/{model_name}.csv')
-        self.longitude = self.data['Longitude']
-        self.latitude = self.data['Latitude']
-        self.probability = self.data['Probability']
-        self.geometry = gpd.points_from_xy(self.longitude, self.latitude)
-        self.geo_data = gpd.GeoDataFrame(self.data, geometry=self.geometry)
-    
+
     def get_country(self):
-        global country
         try:
             with open('utils/map_dependencies/countries.geojson', 'r') as attempt:
                 attempt.close()
@@ -38,22 +31,28 @@ class Map(Project):
                 lines = file.readlines()
                 data = None
                 for line in lines:
-                    if country in line:
+                    if self.country_name in line:
                         data = line
                         break
                 if data is None:
                     print('Put again the country name\n')
-                    country = input('Put the country: ')
+                    self.country_name = input('Put the country: ')
                     continue
                 else:
                     break
-        path = f'utils/map_dependencies/{country}.geojson'
+        path = f'utils/map_dependencies/{self.country_name}.geojson'
         with open(path, 'w') as file:
             file.write(data)
 
         return path
 
-    def get_map(self, model_name: str):
+    def get_map(self):
+        self.data = pd.read_csv('projects/'+self.name+f'/inference/{self.model_name}.csv')
+        self.longitude = self.data['Longitude']
+        self.latitude = self.data['Latitude']
+        self.probability = self.data['Probability']
+        self.geometry = gpd.points_from_xy(self.longitude, self.latitude)
+        self.geo_data = gpd.GeoDataFrame(self.data, geometry=self.geometry)
         ## Interpolation
         min_lon, max_lon, min_lat, max_lat = self.country  ##cambiar
         
@@ -70,6 +69,6 @@ class Map(Project):
 
         plt.colorbar(heatmap, ax=ax, label='Probability')
 
-        plt.savefig('projects/'+self.name+'/heatmap/'+model_name+'.png')
+        plt.savefig('projects/'+self.name+'/heatmap/'+self.model_name+'.png')
 
 

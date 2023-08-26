@@ -115,9 +115,9 @@ def tif_to_dataframe(tif_path, up_boundary: float, dependent):
             dataframe = variable.loc[:, ['x', 'y']].rename(columns = {'x':'Longitude', 'y': 'Latitude'})
         dataframe = pd.concat([dataframe,variable[True].rename(file.split('_')[2] + file.split('_')[-1][:-4])], axis = 1)
 
-    dependent = match_variables(dataframe, dependent)
-    
     bounding_box = boxes(dataframe, dependent, up_boundary)
+    
+    dependent = match_variables(bounding_box.restrict(), dependent)
 
     return dependent, bounding_box.restrict()
 
@@ -159,7 +159,7 @@ def match_variables(independent, dependent):
         
         nearest = independent[independent['distance'] == independent['distance'].min()]
 
-        dependent.iloc[idx,:] = (float(nearest['Longitude']), float(nearest['Latitude']), isolated_vector[2])
+        dependent.iloc[idx,:] = [nearest.iloc[0,0], nearest.iloc[0,1], isolated_vector[2]]
 
     independent = independent.drop('distance', axis = 1)
 
