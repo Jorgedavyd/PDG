@@ -115,6 +115,7 @@ def tif_to_dataframe(tif_path, up_boundary: float, dependent = None, inference: 
             dataframe = variable.loc[:, ['x', 'y']].rename(columns = {'x':'Longitude', 'y': 'Latitude'})
         dataframe = pd.concat([dataframe,variable[True].rename(file.split('_')[2] + file.split('_')[-1][:-4])], axis = 1)
     if inference:
+
         return dataframe
     else:
         bounding_box = boxes(dataframe, dependent, up_boundary)
@@ -177,13 +178,14 @@ def dataframe_to_torch(dataframe, input_cols, output_cols):
     inputs_array = dataframe1[input_cols].to_numpy()
     targets_array = dataframe1[output_cols].to_numpy()
     #Normalizing the dataset
-    inputs_norm = StandardScaler().fit_transform(inputs_array)
+    scaler = StandardScaler()
+    inputs_norm = scaler.fit_transform(inputs_array)
     #Creating torch tensors
     inputs = torch.from_numpy(inputs_norm.astype(np.float32()))
     targets = torch.from_numpy(targets_array.astype(np.float32()))
     #Create dataset
     dataset = TensorDataset(inputs, targets)
-    return dataset
+    return scaler, dataset
 
 def dataframe_to_numpy(dataframe, input_cols, output_cols):
     # Make a copy of the original dataframe
@@ -192,21 +194,14 @@ def dataframe_to_numpy(dataframe, input_cols, output_cols):
     inputs_array = dataframe1[input_cols].to_numpy()
     targets_array = dataframe1[output_cols].to_numpy()
     #Normalizing the dataset
-    inputs_norm = StandardScaler().fit_transform(inputs_array)
-    return inputs_norm, targets_array 
+    scaler = StandardScaler()
+    inputs_norm = scaler.fit_transform(inputs_array)
+    return scaler, inputs_norm, targets_array 
 
-def scaler(dataframe, input_cols):
-    # Make a copy of the original dataframe
-    dataframe1 = dataframe.copy(deep=True)
-    # Extract input & outupts as numpy arrays
-    inputs_array = dataframe1[input_cols].to_numpy()
-    #Normalizing the dataset
-    preprocess = StandardScaler().fit(inputs_array)
-    return preprocess
-
-def transform(scaler, data):
-    out = scaler(data)
-    out = torch.from_numpy(out.astype(np.float32()))
+def transform(scaler, data, is_torch: bool = True):
+    out = scaler.transform(data)
+    if is_torch:
+        out = torch.from_numpy(out.astype(np.float32())).unsqueeze(0)
     return out
 
 def data_preprocess_with_pseudo(url: str, down_boundary: float, up_boundary: float):
@@ -216,9 +211,9 @@ def data_preprocess_with_pseudo(url: str, down_boundary: float, up_boundary: flo
     dependent, independent = tif_to_dataframe(folder, up_boundary, dependent)
     presence = get_presence_dependent(dependent)
     dataframe = absence_generator(presence, dependent, independent, down_boundary, up_boundary)
-    dataset_torch = dataframe_to_torch(dataframe, dataframe.columns.values[:-1], dataframe.columns.values[-1])
-    x,y = dataframe_to_numpy(dataframe, dataframe.columns.values[:-1], dataframe.columns.values[-1])
-    return dataset_torch, (x,y)
+    scaler_torch, dataset_torch = dataframe_to_torch(dataframe, dataframe.columns.values[2:-1], dataframe.columns.values[-1])
+    scaler_numpy, x,y = dataframe_to_numpy(dataframe, dataframe.columns.values[2:-1], dataframe.columns.values[-1])
+    return dataset_torch, x,y, scaler_torch, scaler_numpy
     
 
 def data_preprocess_without_pseudo(url: str):
@@ -226,6 +221,6 @@ def data_preprocess_without_pseudo(url: str):
     dependent = import_targets(path)
     folder = from_url_tif(url)
     dependent, _ = tif_to_dataframe(folder, 0, dependent)
-    dataframe_torch = dataframe_to_torch(dependent, dependent.columns.values[:-1], dependent.columns.values[-1])
-    x,y = dataframe_to_numpy(dependent, dependent.columns.values[:-1], dependent.columns.values[-1])
-    return dataframe_torch, (x,y)
+    scaler_torch, dataset_torch = dataframe_to_torch(dependent, dependent.columns.values[2:-1], dependent.columns.values[-1])
+    scaler_numpy, x,y = dataframe_to_numpy(dependent, dependent.columns.values[2:-1], dependent.columns.values[-1])
+    return dataset_torch, x,y, scaler_torch, scaler_numpy

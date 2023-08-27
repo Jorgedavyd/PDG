@@ -79,15 +79,14 @@ def fit(epochs, lr, model, train_loader, val_loader,
     torch.cuda.empty_cache()
     history = [] # Seguimiento de entrenamiento
     
+    optimizer = opt_func(model.parameters(), lr, weight_decay=weight_decay)
+    
     sched = torch.optim.lr_scheduler.OneCycleLR(optimizer, lr, epochs=epochs,
                                                 steps_per_epoch=len(train_loader))
-    
-    # Poner el método de minimización personalizado
-    optimizer = opt_func(model.parameters(), lr, weight_decay=weight_decay)
 
     for epoch in tqdm(range(epochs), total = epochs, desc = 'Training Neural Network ...'):
         # Training Phase
-        model.train()  #Activa calcular los vectores gradiente
+        model.train()  
         train_losses = []
         lrs = []
         for batch in train_loader:

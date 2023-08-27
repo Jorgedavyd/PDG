@@ -133,7 +133,7 @@ def test_phase(x_test,y_test, model):
 
 ###Define the generalized hyperparameters
 
-def train_phase(torch_data, batch_size:int, x , y, epochs:int, lr: float,
+def train_phase(torch_data, x , y, epochs:int, lr: float,
                   weight_decay: float=0.0, grad_clip=False, opt_func=torch.optim.Adam):
     results_list = []
     # data preparation
@@ -141,7 +141,6 @@ def train_phase(torch_data, batch_size:int, x , y, epochs:int, lr: float,
     x_train, x_test, y_train, y_test = train_test_split(x , y, test_size=0.2, shuffle = True, stratify=y)
     ## Pytorch based
     ###Generating dataset
-    batch_size = batch_size
     val_size = round(0.2*len(torch_data))
     train_size = len(torch_data) - val_size
     
@@ -149,9 +148,11 @@ def train_phase(torch_data, batch_size:int, x , y, epochs:int, lr: float,
 
     ### Generating dataloaders
     device = get_default_device()
-    
-    train_loader = DataLoader(train_ds, batch_size, shuffle=True)
-    val_loader = DataLoader(val_ds, batch_size*2)
+    batch_size_train = 1
+    batch_size_val = len(val_ds)
+
+    train_loader = DataLoader(train_ds, batch_size_train, shuffle=True)
+    val_loader = DataLoader(val_ds, batch_size_val)
     train_loader = DeviceDataLoader(train_loader, device)
     val_loader = DeviceDataLoader(val_loader, device)
 
@@ -175,7 +176,7 @@ def train_phase(torch_data, batch_size:int, x , y, epochs:int, lr: float,
     
     ## 3. Neural Network
     architecture = (16,8,4)
-    nn_model = to_device(NeuralNetwork(name, 21, *architecture), device) ##define through jupyter notebooks
+    nn_model = to_device(NeuralNetwork(name, 19, *architecture), device) ##define through jupyter notebooks
     history = fit(epochs, lr, nn_model, train_loader, val_loader, weight_decay, grad_clip, opt_func)
     print('\nDone!')
     

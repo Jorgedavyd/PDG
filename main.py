@@ -19,7 +19,7 @@ def program_init():
     return ans
 def measurement():
     while True:
-        ans = input('Data accuracy:\n1. 10m\n2. 5m\n3. 2.5 m\n4. 30 s')
+        ans = input('Data accuracy:\n1. 10m\n2. 5m\n3. 2.5 m\n4. 30 s\n===================>')
         if ans == '1':
             ans = URLs.url600s
             break
@@ -47,22 +47,21 @@ if __name__ == '__main__':
     if program_init():
         down_boundary = float(input('Min radius:'))
         up_boundary = float(input('Max radius:'))
-        torch_dataset, (x,y) = data_preprocess_with_pseudo(url, down_boundary, up_boundary)
+        torch_dataset, x, y, scaler_torch, scaler_numpy= data_preprocess_with_pseudo(url, down_boundary, up_boundary)
     else:
-        torch_dataset, (x,y) = data_preprocess_without_pseudo(url)
+        torch_dataset, x,y, scaler_torch, scaler_numpy = data_preprocess_without_pseudo(url)
     
     # Training phase
 
     ## Neural network parameters
-    batch_size = 1
     epochs = 250
-    lr = 1e-4
-    weight_decay = 1e-5
-    grad_clip = 1e-2
+    lr = 1e-2
+    weight_decay = 1e-4
+    grad_clip = 1e-1
     opt_func = torch.optim.Adam
     
     ## training...
-    name, models = train_phase(torch_dataset, batch_size, x,y, epochs, lr, weight_decay, grad_clip, opt_func)
+    name, models = train_phase(torch_dataset, x,y, epochs, lr, weight_decay, grad_clip, opt_func)
 
     
     # Model inference
@@ -74,9 +73,9 @@ if __name__ == '__main__':
     RF_model_name = 'Random_forest'
     NN_model_name = 'Neural_Network'
     
-    LR_model = Model(country, models[0],LR_model_name, name, independent)
-    RF_model = Model(country, models[1],RF_model_name, name, independent)
-    NN_model = Model(country, models[2],NN_model_name, name, independent)
+    LR_model = Model(country, models[0],LR_model_name, name, independent, scaler_numpy)
+    RF_model = Model(country, models[1],RF_model_name, name, independent, scaler_numpy)
+    NN_model = Model(country, models[2],NN_model_name, name, independent, scaler_torch)
 
     LR_model.get_map()
     RF_model.get_map()
