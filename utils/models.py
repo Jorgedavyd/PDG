@@ -133,7 +133,7 @@ def test_phase(x_test,y_test, model):
 
 ###Define the generalized hyperparameters
 
-def train_phase(torch_data, x , y, epochs:int, lr: float,
+def train_phase(name: str, torch_data, x , y, epochs:int, lr: float,
                   weight_decay: float=0.0, grad_clip=False, opt_func=torch.optim.Adam):
     results_list = []
     # data preparation
@@ -157,7 +157,6 @@ def train_phase(torch_data, x , y, epochs:int, lr: float,
     val_loader = DeviceDataLoader(val_loader, device)
 
     # train phase
-    name = input('Name of this project: ')
     ## 1.Maximun entropy
     print(f'\nTraining Maximum Entropy algorithm ...')
     me_model = MaximumEntropy(name)
@@ -189,4 +188,4 @@ def train_phase(torch_data, x , y, epochs:int, lr: float,
     rf_model.roc(x_test, y_test, 'random_forest')
     me_model.roc(x_test, y_test, 'maximum_entropy')
 
-    return name, [me_model, rf_model, nn_model]
+    return [me_model, rf_model, nn_model]

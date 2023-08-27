@@ -39,7 +39,7 @@ def measurement():
 
 if __name__ == '__main__':
     # General dependencies of the app
-    
+    name = input('Name of the project: ')
     country = input('On which country do you want your map plot?: ')
     url = measurement()
     # Ask for mode, perform data preprocessing
@@ -61,7 +61,7 @@ if __name__ == '__main__':
     opt_func = torch.optim.Adam
     
     ## training...
-    name, models = train_phase(torch_dataset, x,y, epochs, lr, weight_decay, grad_clip, opt_func)
+    models = train_phase(name, torch_dataset, x,y, epochs, lr, weight_decay, grad_clip, opt_func)
 
     
     # Model inference
