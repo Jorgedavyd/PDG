@@ -70,12 +70,18 @@ def evaluate(model, val_loader):
     outputs = [model.validation_step(batch) for batch in val_loader]
 
     return model.validation_epoch_end(outputs)
-
+def get_lr(optimizer):
+    for param_group in optimizer.param_groups:
+        return param_group['lr'] # Seguimiento del learning rate
+    
 def fit(epochs, lr, model, train_loader, val_loader,
                   weight_decay=0, grad_clip=False, opt_func=torch.optim.Adam):
     torch.cuda.empty_cache()
     history = [] # Seguimiento de entrenamiento
-
+    
+    sched = torch.optim.lr_scheduler.OneCycleLR(optimizer, lr, epochs=epochs,
+                                                steps_per_epoch=len(train_loader))
+    
     # Poner el método de minimización personalizado
     optimizer = opt_func(model.parameters(), lr, weight_decay=weight_decay)
 
@@ -83,6 +89,7 @@ def fit(epochs, lr, model, train_loader, val_loader,
         # Training Phase
         model.train()  #Activa calcular los vectores gradiente
         train_losses = []
+        lrs = []
         for batch in train_loader:
             # Calcular el costo
             loss = model.training_step(batch)
@@ -99,9 +106,14 @@ def fit(epochs, lr, model, train_loader, val_loader,
             optimizer.step()
             optimizer.zero_grad()
 
+            lrs.append(get_lr(optimizer))
+            sched.step()
+
+
         # Fase de validación
         result = evaluate(model, val_loader)
         result['train_loss'] = torch.stack(train_losses).mean().item() #Stackea todos los costos de las iteraciones sobre los batches y los guarda como la pérdida general de la época
+        result['lrs'] = lrs
         history.append(result) # añadir a la lista el diccionario de resultados
     
     return history

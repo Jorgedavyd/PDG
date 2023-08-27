@@ -23,7 +23,6 @@ class Model(Map):
         geo_df.crs = 'EPSG:4326'
         data = gpd.sjoin(geo_df, self.country, how='inner', op='within')
         data = data.drop(['geometry', 'index_right','ADMIN','ISO_A3'], axis = 1)
-        print(data.shape)
         return data
     
     def torch_inference(self, independent):

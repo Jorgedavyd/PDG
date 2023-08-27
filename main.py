@@ -11,21 +11,38 @@ def program_init():
         if ans == 'y':
             ans = 1
             break
-        if ans == 'n':
+        elif ans == 'n':
             ans = 0
             break
         else:
             print('Try again')
+    return ans
+def measurement():
+    while True:
+        ans = input('Data accuracy:\n1. 10m\n2. 5m\n3. 2.5 m\n4. 30 s')
+        if ans == '1':
+            ans = URLs.url600s
+            break
+        elif ans == '2':
+            ans= URLs.url300s
+            break
+        elif ans =='3':
+            ans= URLs.url150s
+            break
+        elif ans == '4':
+            ans= URLs.url30s
+            break
+        else:
+            print('Try again')
+            continue
     return ans
 
 if __name__ == '__main__':
     # General dependencies of the app
     
     country = input('On which country do you want your map plot?: ')
-    url = URLs.url600s
-    
+    url = measurement()
     # Ask for mode, perform data preprocessing
-
     
     if program_init():
         down_boundary = float(input('Min radius:'))
@@ -39,8 +56,8 @@ if __name__ == '__main__':
     ## Neural network parameters
     batch_size = 1
     epochs = 250
-    lr = 1e-3
-    weight_decay = 1e-4
+    lr = 1e-4
+    weight_decay = 1e-5
     grad_clip = 1e-2
     opt_func = torch.optim.Adam
     
