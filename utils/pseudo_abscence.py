@@ -56,7 +56,7 @@ def variable_analysis(dependent, presence, filtered_dataframe):
 
     filtered_dataframe['distance'] = filtered_dataframe.apply(lambda row: row['distance']/6, axis = 1)
 
-    filtered_dataframe = filtered_dataframe.sort_values('distance', ascending = False).head(2*len(presence) - len(dependent)).drop('distance', axis = 1)
+    filtered_dataframe = filtered_dataframe.sort_values('distance', ascending = False).head(10*(2*len(presence) - len(dependent))).drop('distance', axis = 1)
 
     print('Done!')
     

@@ -54,10 +54,10 @@ if __name__ == '__main__':
     # Training phase
 
     ## Neural network parameters
-    epochs = 250
-    lr = 1e-2
-    weight_decay = 1e-4
-    grad_clip = 1e-1
+    epochs = 500
+    lr = 1e-4
+    weight_decay = 1e-5
+    grad_clip = 1e-2
     opt_func = torch.optim.Adam
     
     ## training...
