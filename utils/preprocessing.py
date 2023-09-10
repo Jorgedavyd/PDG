@@ -13,27 +13,6 @@ from tqdm import tqdm
 
 from utils.pseudo_abscence import *
 
-def haversine(lat1, lon1, lat2, lon2):
-    """
-    Calculate the great-circle distance between two points 
-    on the Earth's surface using the Haversine formula.
-    """
-    R = 6371.0  # Earth radius in kilometers
-
-    lat1_rad = np.radians(lat1)
-    lon1_rad = np.radians(lon1)
-    lat2_rad = np.radians(lat2)
-    lon2_rad = np.radians(lon2)
-
-    dlat = lat2_rad - lat1_rad
-    dlon = lon2_rad - lon1_rad
-
-    a = np.sin(dlat / 2.0) ** 2 + np.cos(lat1_rad) * np.cos(lat2_rad) * np.sin(dlon / 2.0) ** 2
-    c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
-
-    distance = R * c
-    return distance
-
 #URLs
 class URLs():
     url600s='https://biogeo.ucdavis.edu/data/worldclim/v2.1/base/wc2.1_10m_bio.zip' 
@@ -75,7 +54,7 @@ def tif_to_dataframe(tif_path):
             dataframe = variable.loc[:, ['x', 'y']].rename(columns = {'x':'Longitude', 'y': 'Latitude'})
         dataframe = pd.concat([dataframe,variable[True].rename(file.split('_')[2] + file.split('_')[-1][:-4])], axis = 1)
 
-        return dataframe
+    return dataframe
 # Targets
 
 def create_path():
@@ -98,15 +77,16 @@ def create_path():
 
 def import_targets(path):
     if 'csv' in path.split('.'):
-        presence = pd.read_csv(path)
+        dependent = pd.read_csv(path)
     else:
-        presence = pd.read_excel(path)
+        dependent = pd.read_excel(path)
     #Including the expert-based pseudo-absence data
 
-    return presence
+    return dependent
 
 #
 def match_variables(independent, dependent):
+    independent = boxes(independent,dependent, 10).restrict()
     #match variables
     for idx, isolated_vector in tqdm(enumerate(dependent.values), desc='Analyzing locations...', total=len(dependent)):
     
@@ -166,6 +146,7 @@ def import_data(url: str):
     return dependent, independent, presence
 
 def data_preprocess_with_pseudo(dependent, independent, presence, up_boundary: float, down_boundary: float = None):
+    independent = boxes(independent, dependent,up_boundary).restrict()
     if down_boundary is not None:
         dataframe = MinMax_Env(presence, dependent, independent, down_boundary, up_boundary)
     else:

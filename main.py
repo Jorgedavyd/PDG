@@ -39,17 +39,17 @@ def measurement():
 
 def pseudo_interface(presence, dependent, independent):
     
+    radius_dataframe = init_analysis(presence, dependent,independent)
+    print('\n'*10)
+    print('-'*20)
+    print('PSEUDO-ABSENCE ANALYSIS\n First, find an optimimal radius, the distance at which the contribution of the most important variables decline or stop increasing should be chosen as the optimal limit to bound background data.')
+    print('\nNow, you have to choose your pseudo-absence generation method, feel free to experiment with both.(TSKM state-of-the-art)')
+    print('\n')
     while True:
-        radius_dataframe = init_analysis(presence, dependent,independent)
-        print('\n'*10)
-        print('-'*20)
-        print('PSEUDO-ABSENCE ANALYSIS\n First, find an optimimal radius, the distance at which the contribution of the most important variables decline or stop increasing should be chosen as the optimal limit to bound background data.')
-        print('\nNow, you have to choose your pseudo-absence generation method, feel free to experiment with both.(TSKM state-of-the-art)')
-        print('\n')
         while True:
             print(radius_dataframe)    
             try:
-                mode = int(input('\n1.Optimized radius finder.\n2.Three step Min-Max analysis + Environmental variable analysis.\n3. TSKM(Three step K-means).\n================>'))
+                mode = int(input('\n1.Optimized radius finder.\n2.Three step Min-Max analysis + Environmental variable analysis.\n3.TSKM(Three step K-means).\n================>'))
                 if 0>mode or 3<mode:
                     raise TypeError
                 else:
@@ -59,7 +59,7 @@ def pseudo_interface(presence, dependent, independent):
                 continue
         if mode == 1:
             print(radius_dataframe)
-            OptimunDistance(presence, dependent, independent)
+            radius_dataframe = OptimunDistance(presence, dependent, independent, radius_dataframe)
             continue
         elif mode ==2:
             print(radius_dataframe)
@@ -73,7 +73,7 @@ def pseudo_interface(presence, dependent, independent):
                 except TypeError:
                     print('Try again')
                     continue
-            torch_dataset, x, y, scaler_torch, scaler_numpy= data_preprocess_with_pseudo(dependent, independent, presence, up_boundary, down_boundary)
+            torch_dataset, x, y, scaler_torch, scaler_numpy= data_preprocess_with_pseudo(dependent,independent,presence,up_boundary, down_boundary)
             return torch_dataset, x, y, scaler_torch, scaler_numpy
         elif mode ==3:
             print(radius_dataframe)
