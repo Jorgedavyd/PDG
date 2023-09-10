@@ -9,6 +9,8 @@ from sklearn import metrics
 from sklearn.model_selection import train_test_split
 from torch.utils.data import random_split
 from torch.utils.data import DataLoader
+from sklearn import svm
+import pandas as pd
 
 class Classification(nn.Module):
     def training_step(self, batch):
@@ -56,6 +58,71 @@ def  SingularLayer(input_size, output):
         nn.ReLU(True)
     )
     return out
+
+class OneClassSVMClassifier:
+    def __init__(self, nu=0.05, kernel="rbf"):
+        self.nu = nu  # The nu hyperparameter controls the trade-off between false positives and false negatives.
+        self.kernel = kernel  # The kernel function to use (e.g., 'rbf', 'linear', 'poly')
+
+    def train(self, X):
+        # Create an OCSVM model with the specified parameters
+        self.model = svm.OneClassSVM(nu=self.nu, kernel=self.kernel)
+
+        # Fit the model on the training data (X contains only examples from the normal class)
+        self.model.fit(X)
+
+    def predict(self, X):
+        # Predict whether each data point is an outlier or not
+        predictions = self.model.predict(X)
+        return predictions
+
+class KMeansCluster:
+    def __init__(self, n_clusters=8, max_iterations=300):
+        self.n_clusters = n_clusters
+        self.max_iterations = max_iterations
+
+    def initialize_centroids(self, X):
+        # Randomly select 'n_clusters' data points as initial centroids
+        np.random.seed(0)  # For reproducibility
+        indices = np.random.choice(X.shape[0], self.n_clusters, replace=False)
+        centroids = X[indices]
+        return centroids
+
+    def assign_clusters(self, X, centroids):
+        # Compute distances from each data point to centroids
+        distances = np.linalg.norm(X[:, np.newaxis] - centroids, axis=2)
+        # Assign each data point to the nearest centroid
+        labels = np.argmin(distances, axis=1)
+        return labels
+
+    def update_centroids(self, X, labels):
+        # Compute new centroids as the mean of the data points in each cluster
+        centroids = np.array([X[labels == k].mean(axis=0) for k in range(self.n_clusters)])
+        return centroids
+
+    def fit(self, X):
+        # Step 1: Initialize centroids
+        self.centroids = self.initialize_centroids(X)
+
+        for _ in range(self.max_iterations):
+            # Step 2: Assign data points to clusters
+            labels = self.assign_clusters(X, self.centroids)
+
+            # Step 3: Update centroids
+            new_centroids = self.update_centroids(X, labels)
+
+            # Check for convergence
+            if np.all(new_centroids == self.centroids):
+                break
+
+            self.centroids = new_centroids
+
+        self.labels = labels  # Store cluster assignments
+        return labels
+
+    def get_centroids(self, columns):
+        return pd.DataFrame(self.centroids, columns=columns)
+
 
 class NeuralNetwork(Classification, ROCplots):
     def __init__(self, name, input_size = 21, *args):

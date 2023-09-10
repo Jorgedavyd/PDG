@@ -37,19 +37,70 @@ def measurement():
             continue
     return ans
 
+def pseudo_interface(presence, dependent, independent):
+    
+    while True:
+        radius_dataframe = init_analysis(presence, dependent,independent)
+        print('\n'*10)
+        print('-'*20)
+        print('PSEUDO-ABSENCE ANALYSIS\n First, find an optimimal radius, the distance at which the contribution of the most important variables decline or stop increasing should be chosen as the optimal limit to bound background data.')
+        print('\nNow, you have to choose your pseudo-absence generation method, feel free to experiment with both.(TSKM state-of-the-art)')
+        print('\n')
+        while True:
+            print(radius_dataframe)    
+            try:
+                mode = int(input('\n1.Optimized radius finder.\n2.Three step Min-Max analysis + Environmental variable analysis.\n3. TSKM(Three step K-means).\n================>'))
+                if 0>mode or 3<mode:
+                    raise TypeError
+                else:
+                    break
+            except TypeError:
+                print('Try again')
+                continue
+        if mode == 1:
+            print(radius_dataframe)
+            OptimunDistance(presence, dependent, independent)
+            continue
+        elif mode ==2:
+            print(radius_dataframe)
+            while True:
+                try:
+                    down_boundary = float(input('Min radius:'))
+                    up_boundary = float(input('Max radius:'))
+                    if down_boundary+10>=up_boundary:
+                        raise TypeError
+                    break
+                except TypeError:
+                    print('Try again')
+                    continue
+            torch_dataset, x, y, scaler_torch, scaler_numpy= data_preprocess_with_pseudo(dependent, independent, presence, up_boundary, down_boundary)
+            return torch_dataset, x, y, scaler_torch, scaler_numpy
+        elif mode ==3:
+            print(radius_dataframe)
+            while True:
+                try:
+                    radius = float(input('Radius: '))
+                    break
+                except TypeError:
+                    print('Try again')
+                    continue    
+            torch_dataset, x, y, scaler_torch, scaler_numpy = data_preprocess_with_pseudo(dependent, independent, presence,radius)
+            return torch_dataset, x, y, scaler_torch, scaler_numpy
+        
 if __name__ == '__main__':
+    
     # General dependencies of the app
     name = input('Name of the project: ')
     country = input('On which country do you want your map plot?: ')
     url = measurement()
+
+    dependent, independent, presence = import_data(url)
     # Ask for mode, perform data preprocessing
     
     if program_init():
-        down_boundary = float(input('Min radius:'))
-        up_boundary = float(input('Max radius:'))
-        torch_dataset, x, y, scaler_torch, scaler_numpy= data_preprocess_with_pseudo(url, down_boundary, up_boundary)
+        torch_dataset, x, y, scaler_torch, scaler_numpy = pseudo_interface(presence, dependent, independent)
     else:
-        torch_dataset, x,y, scaler_torch, scaler_numpy = data_preprocess_without_pseudo(url)
+        torch_dataset, x,y, scaler_torch, scaler_numpy = data_preprocess_without_pseudo(dependent)
     
     # Training phase
 
@@ -63,11 +114,6 @@ if __name__ == '__main__':
     ## training...
     models = train_phase(name, torch_dataset, x,y, epochs, lr, weight_decay, grad_clip, opt_func)
 
-    
-    # Model inference
-    folder = from_url_tif(url)
-
-    independent = tif_to_dataframe(folder, up_boundary, inference = True)
     
     LR_model_name = 'Maximum_entropy'
     RF_model_name = 'Random_forest'

@@ -4,7 +4,6 @@ import numpy as np
 import zipfile
 import torch
 import glob
-import math
 import os
 
 from torch.utils.data import TensorDataset
@@ -34,45 +33,6 @@ def haversine(lat1, lon1, lat2, lon2):
 
     distance = R * c
     return distance
-
-#Bounding boxes
-class boxes:
-    def __init__(self, independent, dependent, up_boundary: float):
-        self.data = independent
-        self.longitude = dependent['Longitude']
-        self.latitude = dependent['Latitude']
-        self.up_boundary = up_boundary
-    def transformation(self, lat, lon, distance):
-
-        # Earth's radius in kilometers
-        earth_radius = 6371.0
-
-        delta_lat =  distance/ earth_radius
-        delta_lon = distance / (earth_radius * math.cos(math.radians(lat)))
-
-        # Calculate new coordinates
-        new_lat = lat + math.degrees(delta_lat)
-        new_lon = lon + math.degrees(delta_lon)
-
-        return new_lon, new_lat
-    def restrict(self):
-        min_lat = self.latitude.min()
-        max_lat = self.latitude.max()
-        min_lon = self.longitude.min()
-        max_lon = self.longitude.max()
-        min_lon_bound, min_lat_bound = self.transformation(min_lat, min_lon, -self.up_boundary)
-        max_lon_bound, max_lat_bound = self.transformation(max_lat, max_lon, self.up_boundary)
-        bounding_box = {
-            'latitude': {'min': min_lat_bound, 'max': max_lat_bound},
-            'longitude': {'min': min_lon_bound, 'max': max_lon_bound}
-        }
-        self.data = self.data[
-            (self.data['Latitude'] >= bounding_box['latitude']['min']) &
-            (self.data['Latitude'] <= bounding_box['latitude']['max']) &
-            (self.data['Longitude'] >= bounding_box['longitude']['min']) &
-            (self.data['Longitude'] <= bounding_box['longitude']['max'])
-        ].reset_index(drop = True)
-        return self.data
 
 #URLs
 class URLs():
@@ -107,23 +67,15 @@ def from_url_tif(url: str):
 
 #transform to dataframe
 
-def tif_to_dataframe(tif_path, up_boundary: float, dependent = None, inference: bool = False):
+def tif_to_dataframe(tif_path):
     for idx, file in enumerate(os.listdir(tif_path)):
         path = os.path.join(tif_path, file)
         variable = gr.from_file(path).to_pandas()
         if idx == 0:
             dataframe = variable.loc[:, ['x', 'y']].rename(columns = {'x':'Longitude', 'y': 'Latitude'})
         dataframe = pd.concat([dataframe,variable[True].rename(file.split('_')[2] + file.split('_')[-1][:-4])], axis = 1)
-    if inference:
 
         return dataframe
-    else:
-        bounding_box = boxes(dataframe, dependent, up_boundary)
-        
-        dependent = match_variables(bounding_box.restrict(), dependent)
-
-        return dependent, bounding_box.restrict()
-
 # Targets
 
 def create_path():
@@ -204,23 +156,26 @@ def transform(scaler, data, is_torch: bool = True):
         out = torch.from_numpy(out.astype(np.float32())).unsqueeze(0)
     return out
 
-def data_preprocess_with_pseudo(url: str, down_boundary: float, up_boundary: float):
+def import_data(url: str):
     path = create_path()
     dependent = import_targets(path)
     folder = from_url_tif(url)
-    dependent, independent = tif_to_dataframe(folder, up_boundary, dependent)
+    independent = tif_to_dataframe(folder)
+    dependent = match_variables(independent, dependent)
     presence = get_presence_dependent(dependent)
-    dataframe = absence_generator(presence, dependent, independent, down_boundary, up_boundary)
+    return dependent, independent, presence
+
+def data_preprocess_with_pseudo(dependent, independent, presence, up_boundary: float, down_boundary: float = None):
+    if down_boundary is not None:
+        dataframe = MinMax_Env(presence, dependent, independent, down_boundary, up_boundary)
+    else:
+        dataframe = TSKM(presence, dependent, independent, up_boundary)
     scaler_torch, dataset_torch = dataframe_to_torch(dataframe, dataframe.columns.values[2:-1], dataframe.columns.values[-1])
     scaler_numpy, x,y = dataframe_to_numpy(dataframe, dataframe.columns.values[2:-1], dataframe.columns.values[-1])
     return dataset_torch, x,y, scaler_torch, scaler_numpy
     
 
-def data_preprocess_without_pseudo(url: str):
-    path = create_path()
-    dependent = import_targets(path)
-    folder = from_url_tif(url)
-    dependent, _ = tif_to_dataframe(folder, 0, dependent)
+def data_preprocess_without_pseudo(dependent):
     scaler_torch, dataset_torch = dataframe_to_torch(dependent, dependent.columns.values[2:-1], dependent.columns.values[-1])
     scaler_numpy, x,y = dataframe_to_numpy(dependent, dependent.columns.values[2:-1], dependent.columns.values[-1])
     return dataset_torch, x,y, scaler_torch, scaler_numpy
