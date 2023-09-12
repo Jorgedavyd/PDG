@@ -40,8 +40,8 @@ def measurement():
 def pseudo_interface(presence, dependent, independent):
     
     radius_dataframe = init_analysis(presence, dependent,independent)
-    print('\n'*10)
-    print('-'*20)
+    print('\n'*100)
+    print('-'*100)
     print('PSEUDO-ABSENCE ANALYSIS\n First, find an optimimal radius, the distance at which the contribution of the most important variables decline or stop increasing should be chosen as the optimal limit to bound background data.')
     print('\nNow, you have to choose your pseudo-absence generation method, feel free to experiment with both.(TSKM state-of-the-art)')
     print('\n')
@@ -88,7 +88,7 @@ def pseudo_interface(presence, dependent, independent):
             return torch_dataset, x, y, scaler_torch, scaler_numpy
         
 if __name__ == '__main__':
-    
+    print('\n'*100)
     # General dependencies of the app
     name = input('Name of the project: ')
     country = input('On which country do you want your map plot?: ')

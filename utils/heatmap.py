@@ -23,8 +23,8 @@ class Map(Project):
             with open('utils/map_dependencies/countries.geojson', 'r') as attempt:
                 attempt.close()
         except FileNotFoundError:
-            os.makedirs('utils/map_dependencies')
-            url='https://datahub.io/core/geo-countries/r/countries.geojson'
+            os.makedirs('utils/map_dependencies', exist_ok=True)
+            url='https://drive.google.com/file/d/1x8uifhNqGFVrEU_bEyPKmaBaknrf0t5i/view?usp=sharing'
             root = 'utils/map_dependencies'
             filename = 'countries.geojson'
             download_url(url, root, filename)

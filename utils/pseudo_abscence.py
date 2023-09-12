@@ -1,6 +1,7 @@
 from sklearn.decomposition import PCA
 from geopy.distance import geodesic
 import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
 import pandas as pd
 import numpy as np
@@ -92,16 +93,19 @@ def TSKM(presence, dependent, independent, up_boundary):
     return df
 ##OCSVM step
 def OCSVM_step(pseudo_absences, presence):
+    #scaler
+    scaler = StandardScaler()
     #Define data
     X = presence.drop(['Longitude', 'Latitude', 'Presence'], axis = 1).values
+    X = scaler.fit_transform(X)
     #Define one class classifier
     OneClassSVM = OneClassSVMClassifier()
     #train oneclass support vector machine
     OneClassSVM.train(X)
     #inference similarity with presence
-    pseudo_absences['prob'] = OneClassSVM.predict(pseudo_absences.iloc[:, 2:])
+    pseudo_absences['prob'] = OneClassSVM.predict(scaler.transform(pseudo_absences.iloc[:, 2:]))
     #take 0 similarity
-    pseudo_absences = pseudo_absences.loc[pseudo_absences['prob']==-1, :].drop('prob', axis = 1)
+    pseudo_absences = pseudo_absences[pseudo_absences['prob']==-1].drop('prob', axis = 1)
     return pseudo_absences
 
 def Kmeans_step(pseudo_absences, n_clusters):
@@ -218,7 +222,7 @@ def variable_analysis(dependent, presence, filtered_dataframe):
 
     filtered_dataframe['distance'] = filtered_dataframe.apply(lambda row: row['distance']/6, axis = 1)
 
-    filtered_dataframe = filtered_dataframe.sort_values('distance', ascending = False).head(100*(2*len(presence) - len(dependent))).drop('distance', axis = 1)
+    filtered_dataframe = filtered_dataframe.sort_values('distance', ascending = False).head(2*len(presence) - len(dependent)).drop('distance', axis = 1)
 
     print('Done!')
     
