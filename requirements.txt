@@ -1,0 +1,15 @@
+matplotlib=3.7.2
+geopandas=0.13.2
+scipy=1.10.1
+scikit-learn=1.2.2
+torch=2.0.0+cu117
+torchvision=0.15.1+cu117
+tqdm=4.65.0
+xgboost=1.7.4
+folium=0.14.0
+GDAL=3.4.3
+geopandas=0.13.2
+geopy=2.3.0
+georasters=0.5.27
+pandas=2.0.3
+numpy=1.23.5
