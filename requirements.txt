@@ -8,7 +8,6 @@ tqdm=4.65.0
 xgboost=1.7.4
 folium=0.14.0
 GDAL=3.4.3
-geopandas=0.13.2
 geopy=2.3.0
 georasters=0.5.27
 pandas=2.0.3
