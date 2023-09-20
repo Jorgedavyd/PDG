@@ -7,7 +7,10 @@
 ## How to use:
 
 If you are trying to run it cloning the repository, make sure your environment has the correct package versions and packages shown in `requirements.txt`:
+
 `pip install -r requirements.txt`
+
+
 If you are using the executable version, you can follow these steps as well.
 
 1. Create a `.csv` or `.xlsx` with the columns `Longitude, Latitude, Presence` in that order.
