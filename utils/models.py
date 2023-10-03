@@ -241,7 +241,7 @@ def train_phase(name: str, torch_data, x , y, epochs:int, lr: float,
     print('\nDone!')
     
     ## 3. Neural Network
-    architecture = (8,4,2)
+    architecture = (64,32,16,8)
     nn_model = to_device(NeuralNetwork(name, 19, *architecture), device) ##define through jupyter notebooks
     history = fit(epochs, lr, nn_model, train_loader, val_loader, weight_decay, grad_clip, opt_func)
     print('\nDone!')
