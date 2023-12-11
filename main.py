@@ -49,7 +49,7 @@ def pseudo_interface(presence, dependent, independent):
         while True:
             print(radius_dataframe)    
             try:
-                mode = int(input('\n1.Optimized radius finder.\n2.Three step Min-Max analysis + Environmental variable analysis.\n3.TSKM(Three step K-means).\n================>'))
+                mode = int(input('\n1.Optimized radius finder.\n2.Three step Min-Max analysis + Environmental variable analysis.\n3.TSKM(Three step K-means).\n4. Random sampling.\n================>'))
                 if 0>mode or 3<mode:
                     raise TypeError
                 else:
@@ -86,6 +86,17 @@ def pseudo_interface(presence, dependent, independent):
                     continue    
             torch_dataset, x, y, scaler_torch, scaler_numpy = data_preprocess_with_pseudo(dependent, independent, presence,radius)
             return torch_dataset, x, y, scaler_torch, scaler_numpy
+        elif mode ==4:
+            print(radius_dataframe)
+            while True:
+                try:
+                    radius = float(input('Radius: '))
+                    break
+                except TypeError:
+                    print('Try again')
+                    continue    
+            torch_dataset, x, y, scaler_torch, scaler_numpy = random_sampling(dependent, independent, presence,radius)
+            return torch_dataset, x, y, scaler_torch, scaler_numpy
         
 if __name__ == '__main__':
     print('\n'*100)
@@ -118,17 +129,30 @@ if __name__ == '__main__':
     LR_model_name = 'Maximum_entropy'
     RF_model_name = 'Random_forest'
     NN_model_name = 'Neural_Network'
+    Bnv_model_name = 'Bernoulli Naive Bayes'
+    Mnv_model_name = 'Multinomial Naive Bayes'
+    SVM_model_name = 'Support Vector Machines'
     
     LR_model = Model(country, models[0],LR_model_name, name, independent, scaler_numpy)
     RF_model = Model(country, models[1],RF_model_name, name, independent, scaler_numpy)
     NN_model = Model(country, models[2],NN_model_name, name, independent, scaler_torch)
+    Bnv_model = Model(country, models[3],Bnv_model_name, name, independent, scaler_numpy)
+    Mnv_model = Model(country, models[4],Mnv_model_name, name, independent, scaler_numpy)
+    SVM_model = Model(country, models[5],SVM_model_name, name, independent, scaler_numpy)
+
 
     LR_model.get_map()
     RF_model.get_map()
+    Bnv_model.get_map()
+    Mnv_model.get_map()
+    SVM_model.get_map()
     NN_model.get_map()
 
     LR_model.save_joblib()
     RF_model.save_joblib()
+    Bnv_model.save_joblib()
+    Mnv_model.save_joblib()
+    SVM_model.save_joblib()
     NN_model.save_torch()
 
     print('All the files are stored inside projects file with the respective project name')

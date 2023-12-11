@@ -75,46 +75,62 @@ def get_lr(optimizer):
         return param_group['lr'] # Seguimiento del learning rate
     
 def fit(epochs, lr, model, train_loader, val_loader,
-                  weight_decay=0, grad_clip=False, opt_func=torch.optim.Adam):
+        weight_decay=0, grad_clip=False, opt_func=torch.optim.Adam, patience=20):
+    
     torch.cuda.empty_cache()
-    history = [] # Seguimiento de entrenamiento
+    history = []  # Seguimiento de entrenamiento
     
     optimizer = opt_func(model.parameters(), lr, weight_decay=weight_decay)
     
-    sched = torch.optim.lr_scheduler.OneCycleLR(optimizer, lr, epochs=epochs,
-                                                steps_per_epoch=len(train_loader))
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.1)  # Example scheduler
+    
+    best_val_loss = float('inf')
+    early_stop_counter = 0
 
-    for epoch in tqdm(range(epochs), total = epochs, desc = 'Training Neural Network ...'):
+    for epoch in tqdm(range(epochs), total=epochs, desc='Training Neural Network ...'):
         # Training Phase
         model.train()  
         train_losses = []
         lrs = []
+        
         for batch in train_loader:
             # Calcular el costo
             loss = model.training_step(batch)
-            #Seguimiento
+            # Seguimiento
             train_losses.append(loss)
-            #Calcular las derivadas parciales
+            # Calcular las derivadas parciales
             loss.backward()
 
             # Gradient clipping, para que no ocurra el exploding gradient
             if grad_clip:
                 nn.utils.clip_grad_value_(model.parameters(), grad_clip)
 
-            #Efectuar el descensod e gradiente y borrar el historial
+            # Efectuar el descenso de gradiente y borrar el historial
             optimizer.step()
             optimizer.zero_grad()
 
             lrs.append(get_lr(optimizer))
-            sched.step()
-
+        
+        scheduler.step()  # Scheduler step
 
         # Fase de validación
         result = evaluate(model, val_loader)
-        result['train_loss'] = torch.stack(train_losses).mean().item() #Stackea todos los costos de las iteraciones sobre los batches y los guarda como la pérdida general de la época
+        val_loss = result['loss']  # Replace 'loss' with your validation loss metric
+        
+        result['train_loss'] = torch.stack(train_losses).mean().item()
         result['lrs'] = lrs
-        history.append(result) # añadir a la lista el diccionario de resultados
-    
+        history.append(result)  # añadir a la lista el diccionario de resultados
+
+        # Early stopping check
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            early_stop_counter = 0
+        else:
+            early_stop_counter += 1
+            if early_stop_counter >= patience:
+                print(f"Early stopping triggered at epoch {epoch}.")
+                break
+
     return history
 class Project():
     def __init__(self, name: str):
@@ -148,6 +164,33 @@ class Project():
             f1_ = results_list[1]['f1']
             acc_ = results_list[1]['accuracy']
             auc_ = results_list[1]['auc']
+            file.write(f'loss,jaccard,f1_score,accuracy,auc\n{loss_},{jaccard_},{f1_},{acc_},{auc_}')
+            print('Done!')
+        with open('projects/'+self.name+'/metrics/bernoulli_nv.csv', 'w') as file:
+            print('Saving Bernoulli Naive Bayes metrics ...')
+            loss_ = results_list[2]['loss']
+            jaccard_ = results_list[2]['jaccard']
+            f1_ = results_list[2]['f1']
+            acc_ = results_list[2]['accuracy']
+            auc_ = results_list[2]['auc']
+            file.write(f'loss,jaccard,f1_score,accuracy,auc\n{loss_},{jaccard_},{f1_},{acc_},{auc_}')
+            print('Done!')
+        with open('projects/'+self.name+'/metrics/multinomial_nv.csv', 'w') as file:
+            print('Saving Multinomial Naive Bayes metrics ...')
+            loss_ = results_list[3]['loss']
+            jaccard_ = results_list[3]['jaccard']
+            f1_ = results_list[3]['f1']
+            acc_ = results_list[3]['accuracy']
+            auc_ = results_list[3]['auc']
+            file.write(f'loss,jaccard,f1_score,accuracy,auc\n{loss_},{jaccard_},{f1_},{acc_},{auc_}')
+            print('Done!')
+        with open('projects/'+self.name+'/metrics/svm.csv', 'w') as file:
+            print('Saving Support Vector Machines metrics ...')
+            loss_ = results_list[4]['loss']
+            jaccard_ = results_list[4]['jaccard']
+            f1_ = results_list[4]['f1']
+            acc_ = results_list[4]['accuracy']
+            auc_ = results_list[4]['auc']
             file.write(f'loss,jaccard,f1_score,accuracy,auc\n{loss_},{jaccard_},{f1_},{acc_},{auc_}')
             print('Done!')
     def loss_plot(self, history):

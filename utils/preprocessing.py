@@ -154,6 +154,13 @@ def data_preprocess_with_pseudo(dependent, independent, presence, up_boundary: f
     scaler_torch, dataset_torch = dataframe_to_torch(dataframe, dataframe.columns.values[2:-1], dataframe.columns.values[-1])
     scaler_numpy, x,y = dataframe_to_numpy(dataframe, dataframe.columns.values[2:-1], dataframe.columns.values[-1])
     return dataset_torch, x,y, scaler_torch, scaler_numpy
+
+def random_sampling(dependent, independent, presence, up_boundary: float, down_boundary: float = None):
+    independent = boxes(independent, dependent,up_boundary).restrict()
+    dataframe = random_pseudo(presence, dependent,independent,up_boundary)
+    scaler_torch, dataset_torch = dataframe_to_torch(dataframe, dataframe.columns.values[2:-1], dataframe.columns.values[-1])
+    scaler_numpy, x,y = dataframe_to_numpy(dataframe, dataframe.columns.values[2:-1], dataframe.columns.values[-1])
+    return dataset_torch, x,y, scaler_torch, scaler_numpy
     
 
 def data_preprocess_without_pseudo(dependent):

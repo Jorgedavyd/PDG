@@ -74,6 +74,14 @@ class boxes:
         ].reset_index(drop = True)
         return self.data
 
+def random_pseudo(presence, dependent, independent, up_boundary):
+    pseudo_absences = simple_distance(presence, independent, up_boundary)
+    num_rows = len(pseudo_absences)
+    num_to_select = int(0.6 * num_rows)
+    random_absences = pseudo_absences.sample(n=num_to_select, random_state=42)  
+    return random_absences
+
+
 ### Interface for TSKM
 def TSKM(presence, dependent, independent, up_boundary):
     #getting the data

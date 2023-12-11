@@ -3,14 +3,16 @@ from utils.random_utils import *
 import xgboost as xgb
 from torch.nn.functional import binary_cross_entropy 
 from sklearn.linear_model import LogisticRegression
-from torch.optim import Adam
-from sklearn.metrics import accuracy_score
 from sklearn import metrics
 from sklearn.model_selection import train_test_split
 from torch.utils.data import random_split
 from torch.utils.data import DataLoader
 from sklearn import svm
 import pandas as pd
+from sklearn.naive_bayes import BernoulliNB
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.svm import SVC
+from sklearn.calibration import CalibratedClassifierCV
 
 class Classification(nn.Module):
     def training_step(self, batch):
@@ -179,7 +181,42 @@ class MaximumEntropy(ROCplots):
 
     def predict(self, X):
         return self.model.predict(X)
+    
+class BernoulliNaiveBayes(ROCplots):
+    def __init__(self, name:str):
+        super().__init__(name)
+        self.model = BernoulliNB()
 
+    def fit(self, X, y):
+        self.model.fit(X, y)
+
+    def predict(self, X):
+        return self.model.predict_proba(X)
+    
+class MultinomialNaiveBayes(ROCplots):
+    def __init__(self, name:str):
+        super().__init__(name)
+        self.model = MultinomialNB()
+
+    def fit(self, X, y):
+        self.model.fit(X, y)
+
+    def predict(self, X):
+        return self.model.predict_proba(X)
+    
+class SVM(ROCplots):
+    def __init__(self, name:str):
+        super().__init__(name)
+        self.model = SVC(probability=True)  # Set probability=True for SVC
+
+    def fit(self, X, y):
+        self.model.fit(X, y)
+        self.calibrated_model = CalibratedClassifierCV(self.model, method='sigmoid')  # Use sigmoid calibration
+        self.calibrated_model.fit(X, y)
+
+    def predict(self, X):
+        return self.calibrated_model.predict_proba(X)
+    
 def test_phase(x_test,y_test, model):
     predictions = model.predict(x_test)
     predictions = np.round(predictions)
@@ -246,6 +283,30 @@ def train_phase(name: str, torch_data, x , y, epochs:int, lr: float,
     history = fit(epochs, lr, nn_model, train_loader, val_loader, weight_decay, grad_clip, opt_func)
     print('\nDone!')
     
+    ## 4.Bernoulli Naive Bayes
+    print(f'\nTraining Bernoulli Naive Bayes algorithm ...')
+    Bnv_model = BernoulliNaiveBayes(name)
+    Bnv_model.fit(x_train, y_train)
+    result_dict = test_phase(x_test, y_test, Bnv_model)
+    results_list.append(result_dict)
+    print('\nDone!')
+    
+    ## 5. Multinomial Naive Bayes
+    print(f'\nTraining Multinomial Naive Bayes algorithm ...')
+    Mnv_model = MultinomialNaiveBayes(name)
+    Mnv_model.fit(x_train, y_train)
+    result_dict = test_phase(x_test, y_test, Mnv_model)
+    results_list.append(result_dict)
+    print('\nDone!')
+
+    ## 6. Support Vector Machines
+    print(f'\nTraining Support Vector Machine algorithm ...')
+    svm_model = SVM(name)
+    svm_model.fit(x_train, y_train)
+    result_dict = test_phase(x_test, y_test, svm_model)
+    results_list.append(result_dict)
+    print('\nDone!')
+
     #Defining project
     project = Project(name)
     #Save metrics
@@ -254,5 +315,8 @@ def train_phase(name: str, torch_data, x , y, epochs:int, lr: float,
     project.loss_plot(history)
     rf_model.roc(x_test, y_test, 'random_forest')
     me_model.roc(x_test, y_test, 'maximum_entropy')
+    Bnv_model.roc(x_test, y_test, 'bernoulli_nv')
+    Mnv_model.roc(x_test, y_test, 'multinomial_nv')
+    svm_model.roc(x_test, y_test, 'svm')
 
-    return [me_model, rf_model, nn_model]
+    return [me_model, rf_model, nn_model, Bnv_model, Mnv_model, svm_model]
